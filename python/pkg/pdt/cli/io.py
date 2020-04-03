@@ -7,6 +7,7 @@ import click_didyoumean
 import time
 import collections
 import math
+import struct
 import pdt
 
 import pdt.cli.toolbox as toolbox
@@ -17,7 +18,7 @@ from os.path import join, expandvars, basename
 from pdt.core import SI534xSlave, I2CExpanderSlave, DACSlave
 
 from pdt.common.definitions import kBoardSim, kBoardFMC, kBoardPC059, kBoardMicrozed, kBoardTLU
-from pdt.common.definitions import kCarrierEnclustraA35, kCarrierKC705, kCarrierMicrozed
+from pdt.common.definitions import kCarrierEnclustraA35, kCarrierKC705, kCarrierMicrozed, kCarrierAFC
 from pdt.common.definitions import kDesingMaster, kDesignOuroboros, kDesignOuroborosSim, kDesignEndpoint, kDesingFanout
 from pdt.common.definitions import kBoardNamelMap, kCarrierNamelMap, kDesignNameMap
 
@@ -523,3 +524,181 @@ def dacsetup(ctx, obj, value):
 
 # ------------------------------------------------------------------------------
 
+#sfp related functions
+def GetCalibSlopeFromSFP(lSFP,index):
+    # calib slope addresses, each slope is 16 bits
+    slope_adr = [ [0x4C, 0x4D], #laser current
+                  [0x50, 0x51], #tx_pwr
+                  [0x54, 0x55], #temp
+                  [0x58, 0x59] ]#voltage supply
+    slope_whole = lSFP.readI2C(0x51,slope_adr[index][0])
+    slope_decimal = lSFP.readI2C(0x51,slope_adr[index][1]) / 256.0
+    return slope_whole+slope_decimal
+
+def GetCalibOffsetFromSFP(lSFP,index):
+    # calib slope addresses, each slope is 16 bits
+    slope_adr = [ [0x4E, 0x4F],  #laser current
+                  [0x52, 0x53],  #tx_pwr
+                  [0x56, 0x57],  #temp
+                  [0x5A, 0x5B] ] #voltage supply
+    
+    offset = lSFP.readI2C(0x51,slope_adr[index][0])
+    #first bit corresponds to sign
+    if (offset & (1 << (8 - 1))) != 0:
+        offset = offset - (1 << 8)
+    return (offset << 8) | lSFP.readI2C(0x51,slope_adr[index][1])
+#####
+
+# temperature
+def GetSFPTemperatureRaw(lSFP):
+    temp_raw_whole = lSFP.readI2C(0x51,0x60)
+    #first bit corresponds to sign
+    if (temp_raw_whole & (1 << (8 - 1))) != 0:
+        temp_raw_whole = temp_raw_whole - (1 << 8)
+    temp_raw_decimal = lSFP.readI2C(0x51,0x61) / 256.0
+    return temp_raw_whole + temp_raw_decimal
+
+def GetSFPTemperatureCalibrated(lSFP):
+    temp_raw = GetSFPTemperatureRaw(lSFP)
+    slope = GetCalibSlopeFromSFP(lSFP,2)
+    offset = GetCalibOffsetFromSFP(lSFP,2)
+    return (temp_raw*slope) + offset
+#######
+
+# voltage
+def GetSFPVoltageRaw(lSFP):
+    return (lSFP.readI2C(0x51,0x62) << 8) | lSFP.readI2C(0x51,0x63)
+
+def GetSFPVoltageCalibrated(lSFP):
+    voltage_raw = GetSFPVoltageRaw(lSFP)
+    slope = GetCalibSlopeFromSFP(lSFP,3)
+    offset = GetCalibOffsetFromSFP(lSFP,3)
+    return ((voltage_raw*slope)+offset)*1e-4
+#########
+
+
+# rx power
+def GetSFPRxPowerRaw(lSFP):
+    return (lSFP.readI2C(0x51,0x68) << 8) | lSFP.readI2C(0x51,0x69)
+
+def GetSFPRxPowerCalibrated(lSFP):
+    rx_pwr_raw = GetSFPRxPowerRaw(lSFP)
+
+    # rx power calib constants, 5 4-byte (floats) parameters
+    rx_pars_adr = [[0x48, 0x49, 0x4A, 0x4B], [0x44, 0x45, 0x46, 0x47], [0x40, 0x41, 0x42, 0x43], [0x3C, 0x3D, 0x3E, 0x3F], [0x38, 0x39, 0x3A, 0x3B]]
+    rx_pars = []
+    for par_adr in rx_pars_adr:
+        par=0
+        for adr in par_adr:
+            val = lSFP.readI2C(0x51,adr)
+            par = (par << 8) | val
+            #print(format(par, '032b'))
+        par = struct.unpack("<f", struct.pack("<i", par))[0] # convert the 32 bits to a float
+        rx_pars.append(par)
+
+    rx_pars_counter=0
+    rx_pwr_calib=0
+    for par in rx_pars:
+        rx_pwr_calib = rx_pwr_calib + (par*pow(rx_pwr_raw,rx_pars_counter))
+        rx_pars_counter=rx_pars_counter+1
+    return rx_pwr_calib*0.1
+#####
+
+# tx power
+def GetSFPTxPowerRaw(lSFP):
+    return (lSFP.readI2C(0x51,0x66) << 8) | lSFP.readI2C(0x51,0x67)
+
+def GetSFPTxPowerCalibrated(lSFP):
+    tx_power_raw = GetSFPTxPowerRaw(lSFP)
+    slope = GetCalibSlopeFromSFP(lSFP,1)
+    offset = GetCalibOffsetFromSFP(lSFP,1)
+    return ((tx_power_raw*slope) + offset)*0.1
+######
+
+
+# current
+def GetSFPCurrentRaw(lSFP):
+    return (lSFP.readI2C(0x51,0x64) << 8) | lSFP.readI2C(0x51,0x65)
+
+def GetSFPCurrentCalibrated(lSFP):
+    current_raw = GetSFPCurrentRaw(lSFP)
+    slope = GetCalibSlopeFromSFP(lSFP,0)
+    offset = GetCalibOffsetFromSFP(lSFP,0)
+    return ((current_raw*slope) + offset)*0.002
+####
+
+# ------------------------------------------------------------------------------
+@io.command('sfp-status', short_help="Read SFP parameters.")
+@click.pass_obj
+@click.pass_context
+def sfpstatus(ctx, obj):
+    '''
+    Read SFP status
+    '''
+
+    lDevice = obj.mDevice
+    lBoardType = obj.mBoardType
+    lCarrierType = obj.mCarrierType
+    lDesignType = obj.mDesignType
+
+    lIO = lDevice.getNode('io')
+
+    if ( lBoardType != kBoardFMC ):
+        click.ClickException("Only timing FMC supported at the moment")
+
+    lSFP = lIO.getNode('sfp_i2c')
+
+    # vendor name
+    vendor=''
+    for adr in range(0x14, 0x23):
+        char = lSFP.readI2C(0x50,adr)
+        vendor=vendor+chr(char)
+
+    #vendor part number
+    pn=''
+    for adr in range(0x28, 0x37):
+        char = lSFP.readI2C(0x50,adr)
+        pn=pn+chr(char)
+
+    echo("SFP Vendor '{}' PN '{}' \n".format(
+        style(vendor, fg='blue'),
+        style(pn, fg='blue')
+    ))
+
+    #mon_diag_type = lSFP.readI2C(0x50,0x5C)
+    #print("Monitor diag type: "+format(mon_diag_type, '08b'))
+
+    secho("Measured SFP parameters", fg='cyan')
+    temp_calib = GetSFPTemperatureCalibrated(lSFP)
+    print("Temperature        : {:.1f} C".format(temp_calib))
+    
+    voltage_calib = GetSFPVoltageCalibrated(lSFP)
+    print("Supply voltage     : {:.1f} V".format(voltage_calib))
+
+    rx_power_calib=GetSFPRxPowerCalibrated(lSFP)
+    print("Rx power           : {:.1f} uW".format(rx_power_calib))
+
+    tx_power_calib = GetSFPTxPowerCalibrated(lSFP)
+    print("Tx power           : {:.1f} uW".format(tx_power_calib))
+
+    current_calib = GetSFPCurrentCalibrated(lSFP)
+    print("Laser bias current : {:.1f} mA".format(current_calib))
+
+    echo("")
+    
+    print("Rx power low alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x22) << 8) | lSFP.readI2C(0x51,0x23))*0.1 ))
+    print("Rx power low warning thresh: {}".format( ((lSFP.readI2C(0x51,0x26) << 8) | lSFP.readI2C(0x51,0x27))*0.1 ))
+
+
+    print("Rx power high warning thresh: {}".format( ((lSFP.readI2C(0x51,0x24) << 8) | lSFP.readI2C(0x51,0x25))*0.1 ))
+    print("Rx power high alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x20) << 8) | lSFP.readI2C(0x51,0x21))*0.1 ))
+
+    echo("")
+
+    print("Tx power low alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x1A) << 8) | lSFP.readI2C(0x51,0x1B))*0.1 ))
+    print("Tx power low warning thresh: {}".format( ((lSFP.readI2C(0x51,0x1E) << 8) | lSFP.readI2C(0x51,0x1F))*0.1 ))
+
+    print("Tx power high warning thresh: {}".format( ((lSFP.readI2C(0x51,0x1C) << 8) | lSFP.readI2C(0x51,0x1D))*0.1 ))
+    print("Tx power high alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x18) << 8) | lSFP.readI2C(0x51,0x19))*0.1 ))
+    #####
+# ------------------------------------------------------------------------------

@@ -37,7 +37,7 @@ kCarrierEnclustraA35 = 0x0
 kCarrierKC705 = 0x1
 kCarrierMicrozed = 0x2
 kCarrierATFC = 0x3
-
+kCarrierAFC = 0x04
 
 kDesingMaster = 0x0
 kDesignOuroborosSim = 0x1
@@ -70,7 +70,7 @@ kCarrierNamelMap = {
     kCarrierKC705: 'kc705',
     kCarrierMicrozed: 'microzed',
     kCarrierATFC: 'atfc',
-
+    kCarrierAFC: 'afc',
 }
 # -----------------------------------------------------------------------------
 
