@@ -208,7 +208,12 @@ def reset(ctx, obj, soft, fanout, forcepllcfg):
         # If not a TLU, read the unique ID from the prom 
         # if lBoardType != kBoardTLU:
 
-        lPROMSlave = 'UID_PROM' if lBoardType == kBoardTLU else 'FMC_UID_PROM'
+        lPROMSlave = 'FMC_UID_PROM'
+        if lBoardType == kBoardTLU:
+            lPROMSlave =  'UID_PROM'
+        elif lCarrierType == kCarrierAFC:
+            lPROMSlave = 'AFC_FMC_UID_PROM'
+
         lValues = lUID.getSlave(lPROMSlave).readI2CArray(0xfa, 6)
         lUniqueID = 0x0
         for lVal in lValues:
