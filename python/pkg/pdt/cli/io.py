@@ -688,20 +688,145 @@ def sfpstatus(ctx, obj):
     print("Laser bias current : {:.1f} mA".format(current_calib))
 
     echo("")
+
+    secho("Tx disable controls", fg='cyan')
+
+    #check if sfp supports sft tx control
+    enhanced_options = lSFP.readI2C(0x50,0x5d)
+
+    # bit 6 tells us whether the soft tx control is implemented in this sfp
+    soft_tx_control_enabled_mask = 0b01000000
+    soft_tx_control_enabled = enhanced_options&soft_tx_control_enabled_mask
+
+    print("Tx disable reg supported: {}".format(soft_tx_control_enabled != 0))
+
+    # get optional status/control bits
+    opt_status_ctrl_byte = lSFP.readI2C(0x51,0x6e)    
+
+    # bit 7 tells us the state of tx_disble pin
+    tx_diable_pin_state = 1 if opt_status_ctrl_byte & (1 << 7) != 0 else 0
+    print("Tx disable pin     : {}".format(tx_diable_pin_state))
+
+    # bit 6 tells us the state of tx_disble register
+    tx_diable_reg_state = 1 if opt_status_ctrl_byte & (1 << 6) != 0 else 0
+    print("Tx disable reg     : {}".format(tx_diable_reg_state))
+#    echo("")
+#    
+#    print("Rx power low alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x22) << 8) | lSFP.readI2C(0x51,0x23))*0.1 ))
+#    print("Rx power low warning thresh: {}".format( ((lSFP.readI2C(0x51,0x26) << 8) | lSFP.readI2C(0x51,0x27))*0.1 ))
+#
+#
+#    print("Rx power high warning thresh: {}".format( ((lSFP.readI2C(0x51,0x24) << 8) | lSFP.readI2C(0x51,0x25))*0.1 ))
+#    print("Rx power high alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x20) << 8) | lSFP.readI2C(0x51,0x21))*0.1 ))
+#
+#    echo("")
+#
+#    print("Tx power low alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x1A) << 8) | lSFP.readI2C(0x51,0x1B))*0.1 ))
+#    print("Tx power low warning thresh: {}".format( ((lSFP.readI2C(0x51,0x1E) << 8) | lSFP.readI2C(0x51,0x1F))*0.1 ))
+#
+#    print("Tx power high warning thresh: {}".format( ((lSFP.readI2C(0x51,0x1C) << 8) | lSFP.readI2C(0x51,0x1D))*0.1 ))
+#    print("Tx power high alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x18) << 8) | lSFP.readI2C(0x51,0x19))*0.1 ))
+    #####
+# ------------------------------------------------------------------------------
+
+
+# ------------------------------------------------------------------------------
+@io.command('switch-sfp-tx', short_help="Control sfp tx")
+@click.option('--on/--off', default=False, help='enable/disable tx; default: FALSE')
+@click.pass_obj
+def switchsfptx(obj, on):
+
+    lDevice = obj.mDevice
+    lBoardType = obj.mBoardType
+    lCarrierType = obj.mCarrierType
+    lDesignType = obj.mDesignType
+
+    lIO = lDevice.getNode('io')
+
+    if ( lBoardType != kBoardFMC ):
+        click.ClickException("Only timing FMC supported at the moment")
+
+    lSFP = lIO.getNode('sfp_i2c')
+
+    # vendor name
+    vendor=''
+    for adr in range(0x14, 0x23):
+        char = lSFP.readI2C(0x50,adr)
+        vendor=vendor+chr(char)
+
+    #vendor part number
+    pn=''
+    for adr in range(0x28, 0x37):
+        char = lSFP.readI2C(0x50,adr)
+        pn=pn+chr(char)
+
+    echo("SFP Vendor '{}' PN '{}' \n".format(
+        style(vendor, fg='blue'),
+        style(pn, fg='blue')
+    ))
+
+    #check if sfp supports sft tx control
+    enhanced_options = lSFP.readI2C(0x50,0x5d)
+    #print(format(enhanced_options, '08b'))
+
+    # bit 6 tells us whether the soft tx control is implemented in this sfp
+    soft_tx_control_enabled_mask = 0b01000000
+
+    soft_tx_control_enabled = enhanced_options&soft_tx_control_enabled_mask
+    #print(format(soft_tx_control_enabled, '08b'))
+    #print(soft_tx_control_enabled)
+
+    if (not soft_tx_control_enabled):
+        secho("WARNING Soft tx disable not supported by this SFP \n", fg='red')
+
+    # get optional status/control bits
+    opt_status_ctrl_byte = lSFP.readI2C(0x51,0x6e)    
+    secho("Tx parameters", fg='cyan')
+
+    # bit 7 tells us the state of tx_disble pin
+    tx_diable_pin_state = 1 if opt_status_ctrl_byte & (1 << 7) != 0 else 0
+    print("Tx disable pin     : {}".format(tx_diable_pin_state))
+
+    # bit 6 tells us the state of tx_disble register
+    tx_diable_reg_state = 1 if opt_status_ctrl_byte & (1 << 6) != 0 else 0
+    print("Tx disable reg     : {}".format(tx_diable_reg_state))
+
+    tx_power_calib = GetSFPTxPowerCalibrated(lSFP)
+    print("Tx power           : {:.1f} uW".format(tx_power_calib))
+
+    current_calib = GetSFPCurrentCalibrated(lSFP)
+    print("Laser bias current : {:.1f} mA".format(current_calib))
+
+    echo ("")
+
+    #bit 6 also controls the soft the tx
+    if (on):
+        new_opt_status_ctrl_byte = opt_status_ctrl_byte & ~(1 << 6)        
+        secho("Setting tx_disble reg to 0 (switch on)")    
+    else:
+        new_opt_status_ctrl_byte = opt_status_ctrl_byte | 1 << 6;
+        secho("Setting tx_disble reg to 1 (switch off)")    
+    lSFP.writeI2C(0x51,0x6e,new_opt_status_ctrl_byte)
     
-    print("Rx power low alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x22) << 8) | lSFP.readI2C(0x51,0x23))*0.1 ))
-    print("Rx power low warning thresh: {}".format( ((lSFP.readI2C(0x51,0x26) << 8) | lSFP.readI2C(0x51,0x27))*0.1 ))
-
-
-    print("Rx power high warning thresh: {}".format( ((lSFP.readI2C(0x51,0x24) << 8) | lSFP.readI2C(0x51,0x25))*0.1 ))
-    print("Rx power high alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x20) << 8) | lSFP.readI2C(0x51,0x21))*0.1 ))
+    time.sleep(0.2)
 
     echo("")
 
-    print("Tx power low alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x1A) << 8) | lSFP.readI2C(0x51,0x1B))*0.1 ))
-    print("Tx power low warning thresh: {}".format( ((lSFP.readI2C(0x51,0x1E) << 8) | lSFP.readI2C(0x51,0x1F))*0.1 ))
+    # get optional status/control bits
+    opt_status_ctrl_byte = lSFP.readI2C(0x51,0x6e)
+    
+    secho("Tx parameters", fg='cyan')
 
-    print("Tx power high warning thresh: {}".format( ((lSFP.readI2C(0x51,0x1C) << 8) | lSFP.readI2C(0x51,0x1D))*0.1 ))
-    print("Tx power high alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x18) << 8) | lSFP.readI2C(0x51,0x19))*0.1 ))
-    #####
-# ------------------------------------------------------------------------------
+    # bit 7 tells us the state of tx_disble pin
+    tx_diable_pin_state = 1 if opt_status_ctrl_byte & (1 << 7) != 0 else 0
+    print("Tx disable pin     : {}".format(tx_diable_pin_state))
+
+    # bit 6 tells us the state of tx_disble register
+    tx_diable_reg_state = 1 if opt_status_ctrl_byte & (1 << 6) != 0 else 0
+    print("Tx disable reg     : {}".format(tx_diable_reg_state))
+
+    tx_power_calib = GetSFPTxPowerCalibrated(lSFP)
+    print("Tx power           : {:.1f} uW".format(tx_power_calib))
+
+    current_calib = GetSFPCurrentCalibrated(lSFP)
+    print("Laser bias current : {:.1f} mA".format(current_calib))
