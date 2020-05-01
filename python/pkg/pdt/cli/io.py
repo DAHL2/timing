@@ -140,11 +140,6 @@ def reset(ctx, obj, soft, fanout, forcepllcfg):
     if ( lBoardType == kBoardPC059 and fanout ):
         secho("Fanout mode enabled", fg='green')
 
-    # Global soft reset
-    lIO.getNode('csr.ctrl.soft_rst').write(0x1)
-    lDevice.dispatch()
-
-
     if not (soft or lBoardType == kBoardSim):
         
         time.sleep(1)
@@ -341,6 +336,9 @@ def reset(ctx, obj, soft, fanout, forcepllcfg):
         lIO.getNode('csr.ctrl.rst_lock_mon').write(0x0)
         lIO.getClient().dispatch()
 
+    # Global soft reset
+    lIO.getNode('csr.ctrl.soft_rst').write(0x1)
+    lDevice.dispatch()
 
     echo()
 # ------------------------------------------------------------------------------
