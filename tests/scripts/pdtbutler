@@ -13,6 +13,10 @@ import StringIO
 # import operator
 import sys
 import os
+import pyipmi
+import pyipmi.interfaces
+import binascii
+import struct
 
 # PDT imports
 import pdt
@@ -80,6 +84,41 @@ def list(obj):
 # ------------------------------------------------------------------------------
 
 
+# ------------------------------------------------------------------------------
+@cli.command('configure-clock-crossbar', short_help='Configures the clock cross-bar on the AFC')
+@click.option('--mch-ip-adr','mch_ip_adr', required=False, type=str, default="192.168.121.99", help='IP address of MCH of uTCA crate hosting the AMC')
+@click.option('--amc-slot', 'amc_slot', required=True, type=click.IntRange(1, 12), help='Trigger mask (in hex).')
+@click.option('--tx-enable-flag', 'tx_enable_flag', required=False, type=toolbox.IntRange(0x0,0xffff), default=0b0000000000100000, help='Output tx enable flags')
+@click.option('--xpt-map0', 'xpt_map0', required=False, type=str, default="7777d77777777777", help='Input->output crossbar map 0')
+@click.option('--xpt-map1', 'xpt_map1', required=False, type=str, default="7777777777777777", help='Input->output crossbar map 1')
+@click.pass_obj
+def configure(obj, mch_ip_adr, amc_slot, tx_enable_flag, xpt_map0, xpt_map1):
+
+    if (len(xpt_map0) != 16 or len(xpt_map1) != 16):
+        raise click.ClickException("XPT map length must be 16. Lenghts of provided maps are, 0: {}, 1: {}".format(len(xpt_map0), len(xpt_map1)))
+
+    amc_ipmb_addresses= [0x72, 0x74, 0x76, 0x78, 0x7a, 0x7c, 0x7e, 0x80, 0x82, 0x84, 0x86, 0x88]
+    amc_ipmb_adr = amc_ipmb_addresses[amc_slot-1]
+
+    interface = pyipmi.interfaces.create_interface('ipmitool', interface_type='lan')
+    connection = pyipmi.create_connection(interface)
+    
+    connection.target = pyipmi.Target(amc_ipmb_adr)
+    connection.target.set_routing([(0x81,0x20,0),(0x20,0x82,7),(0x20,amc_ipmb_adr,None)])
+    connection.session.set_session_type_rmcp(mch_ip_adr, port=623)
+    connection.session.set_auth_type_user('', '')
+    connection.session.establish()
+
+    # input->output map in order of 0->15
+    toolbox.applyCrossbarXPTMapConfig(connection, xpt_map0, 0)
+    toolbox.applyCrossbarXPTMapConfig(connection, xpt_map1, 1)
+
+    # output tx enable flags in order of 15 -> 0
+    toolbox.applyCrossbarTxConfig(connection,tx_enable_flag)
+
+    #enable new config
+    toolbox.writeRegOverIPMI(connection, 0x80, 0x01)
+# ------------------------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------------

@@ -5,6 +5,10 @@ import re
 import definitions as defs
 import click
 import time
+import pyipmi
+import pyipmi.interfaces
+import binascii
+import struct
 
 from click import echo, style, secho
 from click_texttable import Texttable
@@ -360,4 +364,97 @@ def printCounters( aTopNode, aSubNodes, aNumCtrs=0x10, aTitle='Cmd', aLegend=def
             lLine += [lBlock[lId],hex(lBlock[lId])] if lBlock[lId] is not None else ['fail']*2
         print( '|'.join(['']+[kCellFmt.format(lCell) for lCell in lLine]+['']))
     print ( '-'*lLineLen)
+# ------------------------------------------------------------------------------
+
+
+# ------------------------------------------------------------------------------
+def readRegOverIPMI(ipmi_connection, reg):
+    raw_read_cmd = b'\x00\x02\x4B\x01\x01'
+    cmd = raw_read_cmd+struct.pack("B", reg)
+    
+    max_attempts=10
+    read_attempts=0
+
+    while True:
+        if read_attempts > max_attempts:
+            raise click.ClickException("Failed to read value of reg {} after {} attempts".format(hex(reg), max_attempts))
+        read_cmd_result = []
+        result = ipmi_connection.raw_command(0x00, 0x30, cmd)
+        for char in result:
+            read_cmd_result.append(ord(char))
+        if read_cmd_result[1] == 1 and read_cmd_result[2] == 1:
+            return read_cmd_result[3]
+        else:
+            read_attempts += 1
+# ------------------------------------------------------------------------------
+
+
+# ------------------------------------------------------------------------------
+def writeRegOverIPMI(ipmi_connection, reg, data):
+    raw_write_cmd = b'\x00\x02\x4B\x02\x01'
+    cmd = raw_write_cmd+struct.pack("B", reg)+struct.pack("B", data)
+    
+    max_attempts=10
+    write_attempts=0
+
+    while True:
+        if write_attempts > max_attempts:
+            raise click.ClickException("Failed to write value of reg {} after {} attempts".format(hex(reg), max_attempts))
+        write_cmd_result = []
+        result = ipmi_connection.raw_command(0x00, 0x30, cmd)
+        for char in result:
+            write_cmd_result.append(ord(char))
+        if write_cmd_result[1] == 2 and write_cmd_result[2] == 1:
+            return
+        else:
+            write_attempts += 1
+# ------------------------------------------------------------------------------
+
+
+# ------------------------------------------------------------------------------
+def applyCrossbarTxConfig(ipmi_connection, tx_enable_flag):
+    tx_control_ctrl_reg_start = 0x20
+    
+    for i in range(16):
+        reg_adr = tx_control_ctrl_reg_start+i 
+
+        # TX Basic Control Register flags:
+        # [6] TX CTL SELECT - 0: PE and output level control is derived from common lookup table
+        #                     1: PE and output level control is derived from per port drive control registers
+        # [5:4] TX EN[1:0]  - 00: TX disabled, lowest power state
+        #                     01: TX standby
+        #                     10: TX squelched
+        #                     11: TX enabled
+        # [3] Reserved      - Set to 0
+        # [2:1] PE[2:0]     - If TX CTL SELECT = 0,
+        #                       000: Table Entry 0
+        #                       001: Table Entry 1
+        #                       010: Table Entry 2
+        #                       011: Table Entry 3
+        #                       100: Table Entry 4
+        #                       101: Table Entry 5
+        #                       110: Table Entry 6
+        #                       111: Table Entry 7
+        #                   - If TX CTL SELECT = 1, PE[2:0] are ignored
+        tx_state = 0b0110000 if tx_enable_flag & (1 << i) else 0b0000000
+        #print("tx state for output {} at adr {}: ".format(i,hex(reg_adr)) +hex(tx_state))
+        writeRegOverIPMI(ipmi_connection, reg_adr, tx_state)
+# ------------------------------------------------------------------------------
+
+
+# ------------------------------------------------------------------------------
+def applyCrossbarXPTMapConfig(ipmi_connection, xpt_map, map_number):
+    xpt_reg_values=[]
+    for i in range(2,18,2):
+        reg_value_str = xpt_map[i-2:i]
+        reg_value=int(reg_value_str, 16)
+        xpt_reg_values.append(reg_value)
+
+    xpt_map_reg_adrs_start=[0x90, 0x98]
+
+    for i in range(len(xpt_reg_values)):
+        reg_adr = xpt_map_reg_adrs_start[map_number]+i
+        reg_value = xpt_reg_values[i]
+        writeRegOverIPMI(ipmi_connection, reg_adr, reg_value)
+        #print("writing {} to {}".format(hex(reg_value),hex(reg_adr)))
 # ------------------------------------------------------------------------------
