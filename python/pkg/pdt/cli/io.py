@@ -17,11 +17,10 @@ from click import echo, style, secho
 from os.path import join, expandvars, basename
 from pdt.core import SI534xSlave, I2CExpanderSlave, DACSlave
 
-from pdt.common.definitions import kBoardSim, kBoardFMC, kBoardPC059, kBoardMicrozed, kBoardTLU
+from pdt.common.definitions import kBoardSim, kBoardFMC, kBoardPC059, kBoardMicrozed, kBoardTLU, kBoardFIB
 from pdt.common.definitions import kCarrierEnclustraA35, kCarrierKC705, kCarrierMicrozed, kCarrierAFC
 from pdt.common.definitions import kDesingMaster, kDesignOuroboros, kDesignOuroborosSim, kDesignEndpoint, kDesingFanout
 from pdt.common.definitions import kBoardNamelMap, kCarrierNamelMap, kDesignNameMap
-
 
 kFMCRev1 = 1
 kFMCRev2 = 2
@@ -349,11 +348,19 @@ def reset(ctx, obj, soft, fanout, forcepllcfg):
 def freq(obj):
     lDevice = obj.mDevice
     lBoardType = obj.mBoardType
+    lCarrierType = obj.mCarrierType
 
     secho("PLL Clock frequency measurement:", fg='cyan')
     # Measure the generated clock frequency
     freqs = {}
-    for i in range(1 if lBoardType == kBoardTLU else 2):
+   
+    freqRange=2
+    if lBoardType == kBoardTLU:
+        freqRange=1
+    elif lBoardType == kBoardFIB and lCarrierType == kCarrierAFC:
+        freqRange=3
+
+    for i in range(freqRange):
         lDevice.getNode("io.freq.ctrl.chan_sel").write(i)
         lDevice.getNode("io.freq.ctrl.en_crap_mode").write(0)
         lDevice.dispatch()
@@ -365,7 +372,9 @@ def freq(obj):
 
     print( "Freq PLL:", freqs[0] )
     if lBoardType != kBoardTLU:
-        print( "Freq CDR:", freqs[1] )   
+        print( "Freq CDR:", freqs[1] )
+        if lBoardType == kBoardFIB and lCarrierType == kCarrierAFC:
+            print("Freq BP: ", freqs[2] )
 # ------------------------------------------------------------------------------
 
 
@@ -744,7 +753,7 @@ def switchsfptx(obj, on):
     lIO = lDevice.getNode('io')
 
     if ( lBoardType != kBoardFMC ):
-        click.ClickException("Only timing FMC supported at the moment")
+        raise click.ClickException("Only timing FMC supported at the moment")
 
     lSFP = lIO.getNode('sfp_i2c')
 
@@ -830,3 +839,4 @@ def switchsfptx(obj, on):
 
     current_calib = GetSFPCurrentCalibrated(lSFP)
     print("Laser bias current : {:.1f} mA".format(current_calib))
+# ------------------------------------------------------------------------------

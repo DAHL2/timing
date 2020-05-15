@@ -32,6 +32,7 @@ kBoardPC059 = 0x2
 kBoardMicrozed = 0x3
 kBoardTLU = 0x4
 # kBoardKC705 = 'kc705'
+kBoardFIB = 0x5
 
 kCarrierEnclustraA35 = 0x0
 kCarrierKC705 = 0x1
@@ -63,6 +64,7 @@ kBoardNamelMap = {
     kBoardPC059: 'pc059',
     kBoardMicrozed: 'microzed',
     kBoardTLU: 'tlu',
+    kBoardFIB: 'fib'
 }
 
 kCarrierNamelMap = {
