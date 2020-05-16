@@ -109,7 +109,7 @@ def configure(obj, mch_ip_adr, amc_slot, tx_enable_flag, xpt_map0, xpt_map1):
     connection.session.set_auth_type_user('', '')
     connection.session.establish()
 
-    # input->output map in order of 0->15
+    # input->output map in output order of 1 0 3 2 5 4 7 6 9 8 11 10 13 12 15 14
     toolbox.applyCrossbarXPTMapConfig(connection, xpt_map0, 0)
     toolbox.applyCrossbarXPTMapConfig(connection, xpt_map1, 1)
 
