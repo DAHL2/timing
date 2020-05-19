@@ -160,6 +160,33 @@ def readclockcrossbarconfig(obj, mch_ip_adr, amc_slot):
 
 
 # ------------------------------------------------------------------------------
+@cli.command('reset-fpga-ethernet', short_help='Reset the ethernet block of the FPGA on the AFC')
+@click.option('--mch-ip-adr','mch_ip_adr', required=False, type=str, default="192.168.121.99", help='IP address of MCH of uTCA crate hosting the AMC')
+@click.option('--amc-slot', 'amc_slot', required=True, type=click.IntRange(1, 12), help='Trigger mask (in hex).')
+@click.pass_obj
+def resetfpgaethernet(obj, mch_ip_adr, amc_slot):
+	amc_ipmb_addresses= [0x72, 0x74, 0x76, 0x78, 0x7a, 0x7c, 0x7e, 0x80, 0x82, 0x84, 0x86, 0x88]
+	amc_ipmb_adr = amc_ipmb_addresses[amc_slot-1]
+	
+	interface = pyipmi.interfaces.create_interface('ipmitool', interface_type='lan')
+	connection = pyipmi.create_connection(interface)
+
+	connection.target = pyipmi.Target(amc_ipmb_adr)
+	connection.target.set_routing([(0x81,0x20,0),(0x20,0x82,7),(0x20,amc_ipmb_adr,None)])
+	connection.session.set_session_type_rmcp(mch_ip_adr, port=623)
+	connection.session.set_auth_type_user('', '')
+	connection.session.establish()
+
+	port_number=0x2
+	#echo( toolbox.readGPIOPortOverIPMI(connection, port_number) )
+	
+	#mode description: 0 - read port info, 1 - set port dir to in, 2 - set port dir to out with optional value
+	toolbox.configureGPIOPortOverIPMI(connection, port_number, 0x2, 0x9,0x1)
+	toolbox.configureGPIOPortOverIPMI(connection, port_number, 0x2, 0x9,0x0)
+# ------------------------------------------------------------------------------  
+
+
+# ------------------------------------------------------------------------------
 if __name__ == '__main__':
     cli.add_command(system.overlord)
     cli.add_command(system.vst)
