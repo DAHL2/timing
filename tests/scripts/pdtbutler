@@ -89,10 +89,11 @@ def list(obj):
 @click.option('--mch-ip-adr','mch_ip_adr', required=False, type=str, default="192.168.121.99", help='IP address of MCH of uTCA crate hosting the AMC')
 @click.option('--amc-slot', 'amc_slot', required=True, type=click.IntRange(1, 12), help='Trigger mask (in hex).')
 @click.option('--tx-enable-flag', 'tx_enable_flag', required=False, type=toolbox.IntRange(0x0,0xffff), default=0b0000000000100000, help='Output tx enable flags')
-@click.option('--xpt-map0', 'xpt_map0', required=False, type=str, default="7777d77777777777", help='Input->output crossbar map 0')
+@click.option('--xpt-map0', 'xpt_map0', required=False, type=str, default="77777d7777777777", help='Input->output crossbar map 0')
 @click.option('--xpt-map1', 'xpt_map1', required=False, type=str, default="7777777777777777", help='Input->output crossbar map 1')
+@click.option('--active-xpt-map', 'active_xpt_map', required=False, type=toolbox.IntRange(0x0,0x1), default=0x0, help='Active xpt map')
 @click.pass_obj
-def configure(obj, mch_ip_adr, amc_slot, tx_enable_flag, xpt_map0, xpt_map1):
+def configure(obj, mch_ip_adr, amc_slot, tx_enable_flag, xpt_map0, xpt_map1, active_xpt_map):
 
     if (len(xpt_map0) != 16 or len(xpt_map1) != 16):
         raise click.ClickException("XPT map length must be 16. Lenghts of provided maps are, 0: {}, 1: {}".format(len(xpt_map0), len(xpt_map1)))
@@ -109,16 +110,53 @@ def configure(obj, mch_ip_adr, amc_slot, tx_enable_flag, xpt_map0, xpt_map1):
     connection.session.set_auth_type_user('', '')
     connection.session.establish()
 
-    # input->output map in output order of 1 0 3 2 5 4 7 6 9 8 11 10 13 12 15 14
+    # reset clock cross-bar
+    toolbox.writeRegOverIPMI(connection, 0x0, 0x01)
+
+    # input->output map in output order of 0 1 2 3 4 5 6 7 8 9 10 11  12 13 14 15
     toolbox.applyCrossbarXPTMapConfig(connection, xpt_map0, 0)
     toolbox.applyCrossbarXPTMapConfig(connection, xpt_map1, 1)
+    
+    # select which map is active
+    toolbox.writeRegOverIPMI(connection, 0x81, active_xpt_map)
+
+    #enable new config
+    toolbox.writeRegOverIPMI(connection, 0x80, 0x01)
 
     # output tx enable flags in order of 15 -> 0
     toolbox.applyCrossbarTxConfig(connection,tx_enable_flag)
 
-    #enable new config
-    toolbox.writeRegOverIPMI(connection, 0x80, 0x01)
+    print("Crossbar config applied")
 # ------------------------------------------------------------------------------
+
+
+# ------------------------------------------------------------------------------
+@cli.command('read-clock-crossbar-config', short_help='Reads the config of the clock cross-bar on the AFC')
+@click.option('--mch-ip-adr','mch_ip_adr', required=False, type=str, default="192.168.121.99", help='IP address of MCH of uTCA crate hosting the AMC')
+@click.option('--amc-slot', 'amc_slot', required=True, type=click.IntRange(1, 12), help='Trigger mask (in hex).')
+@click.pass_obj
+def readclockcrossbarconfig(obj, mch_ip_adr, amc_slot):
+	amc_ipmb_addresses= [0x72, 0x74, 0x76, 0x78, 0x7a, 0x7c, 0x7e, 0x80, 0x82, 0x84, 0x86, 0x88]
+	amc_ipmb_adr = amc_ipmb_addresses[amc_slot-1]
+	
+	interface = pyipmi.interfaces.create_interface('ipmitool', interface_type='lan')
+	connection = pyipmi.create_connection(interface)
+
+	connection.target = pyipmi.Target(amc_ipmb_adr)
+	connection.target.set_routing([(0x81,0x20,0),(0x20,0x82,7),(0x20,amc_ipmb_adr,None)])
+	connection.session.set_session_type_rmcp(mch_ip_adr, port=623)
+	connection.session.set_auth_type_user('', '')
+	connection.session.establish()
+	
+	xpt_map_0 = toolbox.readCrossbarXPTMapConfig(connection, 0)
+	xpt_map_1 = toolbox.readCrossbarXPTMapConfig(connection, 1)
+	tx_states = toolbox.readCrossbarTxConfig(connection)
+	
+
+	active_map = toolbox.readRegOverIPMI(connection, 0x81)
+	print("Active map: ",active_map)
+	echo  ( toolbox.formatCrossbarConfigTable(xpt_map_0, xpt_map_1, tx_states,active_map) )
+# ------------------------------------------------------------------------------    
 
 
 # ------------------------------------------------------------------------------

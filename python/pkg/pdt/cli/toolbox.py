@@ -446,8 +446,11 @@ def applyCrossbarTxConfig(ipmi_connection, tx_enable_flag):
 def applyCrossbarXPTMapConfig(ipmi_connection, xpt_map, map_number):
     xpt_reg_values=[]
     for i in range(2,18,2):
-        reg_value_str = xpt_map[i-2:i]
-        reg_value=int(reg_value_str, 16)
+        map_value_str = xpt_map[i-2:i]
+        map_value=int(map_value_str, 16)
+        reg_value_lo = int('{:08b}'.format(map_value)[4:], 2) << 4
+        reg_value_hi = int('{:08b}'.format(map_value)[:4], 2)
+        reg_value = reg_value_lo | reg_value_hi
         xpt_reg_values.append(reg_value)
 
     xpt_map_reg_adrs_start=[0x90, 0x98]
@@ -456,5 +459,57 @@ def applyCrossbarXPTMapConfig(ipmi_connection, xpt_map, map_number):
         reg_adr = xpt_map_reg_adrs_start[map_number]+i
         reg_value = xpt_reg_values[i]
         writeRegOverIPMI(ipmi_connection, reg_adr, reg_value)
-        #print("writing {} to {}".format(hex(reg_value),hex(reg_adr)))
+# ------------------------------------------------------------------------------
+
+
+# ------------------------------------------------------------------------------
+def readCrossbarXPTMapConfig(ipmi_connection, map_number):
+    xpt_map=[]
+
+    xpt_map_reg_adrs_start=[0x90, 0x98]
+
+    for i in range(8):
+        reg_adr = xpt_map_reg_adrs_start[map_number]+i
+        reg_value = readRegOverIPMI(ipmi_connection, reg_adr)
+        reg_value_lo = reg_value & 0x0f
+        reg_value_hi = (reg_value >> 4) & 0x0f
+        xpt_map.append(reg_value_lo)
+        xpt_map.append(reg_value_hi)
+    return xpt_map
+
+def readCrossbarTxConfig(ipmi_connection):
+    tx_states=[]
+
+    tx_control_ctrl_reg_start = 0x20
+
+    for i in range(16):
+        reg_adr = tx_control_ctrl_reg_start+i
+        reg_value = readRegOverIPMI(ipmi_connection, reg_adr)
+        tx_states.append(reg_value)
+    return tx_states
+# ------------------------------------------------------------------------------
+
+
+# ------------------------------------------------------------------------------
+def formatCrossbarConfigTable(map_0, map_1, tx, active_map):
+
+    map_0_colour='green'
+    map_1_colour='white'
+    if active_map == 1:
+        map_0_colour='white'
+        map_1_colour='green'
+
+    configTable = Texttable(max_width=0)
+    configTable.set_deco(Texttable.VLINES | Texttable.BORDER | Texttable.HEADER)
+    configTable.set_cols_align(["l", "l", "l", "l"])
+    configTable.set_chars(['-', '|', '+', '-'])
+    configTable.header( ['Output', style('Map 0', fg=map_0_colour), style('Map 1', fg=map_1_colour), 'Tx state'] )
+
+    for i in range(len(map_0)):
+        tx_state = (tx[i] & 0b0110000) >> 4 
+        tx_state_names = ["Disabled", "Standby", "Squelched", "Enabled"]
+        tx_state_colours=['red', 'white', 'blue', 'green']
+        configTable.add_row( [i, style(str(map_0[i]), fg=map_0_colour), style(str(map_1[i]), fg=map_1_colour), style(tx_state_names[tx_state], fg=tx_state_colours[tx_state])] )
+        
+    return configTable.draw()
 # ------------------------------------------------------------------------------
