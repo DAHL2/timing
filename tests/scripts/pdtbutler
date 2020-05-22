@@ -178,11 +178,15 @@ def resetfpgaethernet(obj, mch_ip_adr, amc_slot):
 	connection.session.establish()
 
 	port_number=0x2
-	#echo( toolbox.readGPIOPortOverIPMI(connection, port_number) )
+	echo( toolbox.readGPIOPortOverIPMI(connection, port_number) )
 	
 	#mode description: 0 - read port info, 1 - set port dir to in, 2 - set port dir to out with optional value
 	toolbox.configureGPIOPortOverIPMI(connection, port_number, 0x2, 0x9,0x1)
+	echo( toolbox.readGPIOPortOverIPMI(connection, port_number) )
+	time.sleep(1)
+
 	toolbox.configureGPIOPortOverIPMI(connection, port_number, 0x2, 0x9,0x0)
+	echo( toolbox.readGPIOPortOverIPMI(connection, port_number) )
 # ------------------------------------------------------------------------------  
 
 

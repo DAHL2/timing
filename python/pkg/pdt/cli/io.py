@@ -109,10 +109,11 @@ def io(obj, device):
 @io.command('reset', short_help="Perform a hard reset on the timing master.")
 @click.option('--soft', '-s', is_flag=True, default=False, help='Soft reset i.e. skip the clock chip configuration.')
 @click.option('--fanout-mode', 'fanout', type=click.IntRange(0, 1), default=0, help='Configures the board in fanout mode (pc059 only)')
+@click.option('--sfp-mux-sel', 'sfpmuxsel', type=toolbox.IntRange(0x0,0x7), default=0, help='Configures the sfp cdr mux on the fib')
 @click.option('--force-pll-cfg', 'forcepllcfg', type=click.Path(exists=True))
 @click.pass_obj
 @click.pass_context
-def reset(ctx, obj, soft, fanout, forcepllcfg):
+def reset(ctx, obj, soft, fanout, forcepllcfg, sfpmuxsel):
     '''
     Perform a hard reset on the timing master, including
 
@@ -136,6 +137,10 @@ def reset(ctx, obj, soft, fanout, forcepllcfg):
 
     lIO = lDevice.getNode('io')
 
+    # Global soft reset
+    lIO.getNode('csr.ctrl.soft_rst').write(0x1)
+    lDevice.dispatch()
+
     if ( lBoardType == kBoardPC059 and fanout ):
         secho("Fanout mode enabled", fg='green')
 
@@ -144,18 +149,27 @@ def reset(ctx, obj, soft, fanout, forcepllcfg):
         time.sleep(1)
         
         # PLL and I@C reset 
-        lIO.getNode('csr.ctrl.pll_rst').write(0x1)
+        if lBoardType == kBoardFIB:
+            #reset expanders
+            lIO.getNode('csr.ctrl.rstb_i2c').write(0x1)
+        else:
+            lIO.getNode('csr.ctrl.pll_rst').write(0x1)
+
         if lBoardType == kBoardPC059:
             lIO.getNode('csr.ctrl.rst_i2c').write(0x1)
             lIO.getNode('csr.ctrl.rst_i2cmux').write(0x1)
 
-
         elif lBoardType == kBoardTLU:
             lIO.getNode('csr.ctrl.rst_i2c').write(0x1)
 
+
         lDevice.dispatch()
 
-        lIO.getNode('csr.ctrl.pll_rst').write(0x0)
+        if lBoardType == kBoardFIB:
+            lIO.getNode('csr.ctrl.rstb_i2c').write(0x0)
+        else:
+            lIO.getNode('csr.ctrl.pll_rst').write(0x0)
+
         if lBoardType == kBoardPC059:
             lIO.getNode('csr.ctrl.rst_i2c').write(0x0)
             lIO.getNode('csr.ctrl.rst_i2cmux').write(0x0)
@@ -167,7 +181,7 @@ def reset(ctx, obj, soft, fanout, forcepllcfg):
 
 
         # Detect the on-board eprom and read the board UID
-        if lBoardType in [kBoardPC059, kBoardTLU]:
+        if lBoardType in [kBoardPC059, kBoardTLU, kBoardFIB]:
             lUID = lIO.getNode('i2c')
         else:
             lUID = lIO.getNode('uid_i2c')
@@ -179,7 +193,8 @@ def reset(ctx, obj, soft, fanout, forcepllcfg):
         if (
             lBoardType == kBoardTLU or
             lBoardType == kBoardPC059 or
-            (lBoardType == kBoardFMC and lCarrierType == kCarrierEnclustraA35)
+            (lBoardType == kBoardFMC and lCarrierType == kCarrierEnclustraA35) or
+            (lBoardType == kBoardFIB and lCarrierType == kCarrierEnclustraA35)
             ):
 
             try:
@@ -222,13 +237,14 @@ def reset(ctx, obj, soft, fanout, forcepllcfg):
                 raise click.ClickException("No revision associated to UID "+hex(lUniqueID))
 
         # Access the clock chip
-        if lBoardType in [kBoardPC059, kBoardTLU]:
+        if lBoardType in [kBoardPC059, kBoardTLU, kBoardFIB]:
             lI2CBusNode = lDevice.getNode("io.i2c")
             lSIChip = SI534xSlave(lI2CBusNode, lI2CBusNode.getSlave('SI5345').getI2CAddress())
         else:
             lSIChip = lIO.getNode('pll_i2c')
-        lSIVersion = lSIChip.readDeviceVersion()
-        echo("PLL version : "+style(hex(lSIVersion), fg='blue'))
+        if lBoardType != kBoardFIB: # temp until we get a real fib
+            lSIVersion = lSIChip.readDeviceVersion()
+            echo("PLL version : "+style(hex(lSIVersion), fg='blue'))
 
         # Ensure that the board revision has a registered clock config
         if forcepllcfg is not None:
@@ -241,6 +257,9 @@ def reset(ctx, obj, soft, fanout, forcepllcfg):
             elif lDesignType == kDesingFanout and fanout in [0]:
                 secho("Overriding clock config - fanout mode", fg='green')
                 lClockConfigPath = kClockConfigMap[kPC059FanoutHDMI if fanout == 1 else kPC059FanoutSFP]
+            elif lBoardType == kBoardFIB:
+                secho("temp solution for clock config until we get a fib", fg='red')
+                lClockConfigPath=""
             else:
                 try:
                     lClockConfigPath = kClockConfigMap[lRevision]    
@@ -253,8 +272,9 @@ def reset(ctx, obj, soft, fanout, forcepllcfg):
             # Configure the clock chip
             lFullClockConfigPath = expandvars(join('${PDT_TESTS}/etc/clock', lClockConfigPath))
 
-        lSIChip.configure(lFullClockConfigPath)
-        echo("SI3545 configuration id: {}".format(style(lSIChip.readConfigID(), fg='green')))
+        if lBoardType != kBoardFIB: # temp until we get a real fib
+            lSIChip.configure(lFullClockConfigPath)
+            echo("SI3545 configuration id: {}".format(style(lSIChip.readConfigID(), fg='green')))
 
 
         if lDesignType == kDesingFanout:
@@ -328,16 +348,40 @@ def reset(ctx, obj, soft, fanout, forcepllcfg):
 
             secho("DAC1 and DAC2 set to " + hex(lBISignalThreshold), fg='cyan')
 
+        elif lBoardType == kBoardFIB:
+            lIO.getNode('csr.ctrl.inmux').write(sfpmuxsel)
+            lIO.getClient().dispatch()
+            secho("Active sfp mux " + hex(sfpmuxsel), fg='cyan')
+             
+             # comment out until the real fib
+#            lExpander1 = I2CExpanderSlave(lI2CBusNode, lI2CBusNode.getSlave('Expander1').getI2CAddress())
+#            lExpander2 = I2CExpanderSlave(lI2CBusNode, lI2CBusNode.getSlave('Expander2').getI2CAddress())
+#            
+#            # reset pll chip
+#            lExpander2.setInversion(0, 0x00)
+#            lExpander2.setIO(0, 0x1e)
+#            lExpander2.setOutputs(0, 0x01)
+#            lExpander2.setOutputs(0, 0x00)
+#
+#            #confugre sfp los receiver bank
+#            lExpander2.setInversion(1, 0x00)
+#            lExpander2.setIO(1, 0xff)
+#
+#            # sfp tx disable
+#            lExpander1.setInversion(0, 0x00)
+#            lExpander1.setIO(0, 0x00)
+#            lExpander1.setOutputs(0, 0xff)
+#
+#            #confugre sfp fault receiver bank
+#            lExpander1.setInversion(1, 0x00)
+#            lExpander1.setIO(1, 0xff)
         else:
             click.ClickException("Unknown board kind {}".format(lBoardType))
 
-        lIO.getNode('csr.ctrl.rst_lock_mon').write(0x1)
-        lIO.getNode('csr.ctrl.rst_lock_mon').write(0x0)
-        lIO.getClient().dispatch()
-
-    # Global soft reset
-    lIO.getNode('csr.ctrl.soft_rst').write(0x1)
-    lDevice.dispatch()
+        if lBoardType != kBoardFIB:
+            lIO.getNode('csr.ctrl.rst_lock_mon').write(0x1)
+            lIO.getNode('csr.ctrl.rst_lock_mon').write(0x0)
+            lIO.getClient().dispatch()
 
     echo()
 # ------------------------------------------------------------------------------
@@ -423,11 +467,14 @@ def clkstatus(ctx, obj, verbose):
     echo()
 
     # Access the clock chip
-    if lBoardType in [kBoardPC059, kBoardTLU]:
+    if lBoardType in [kBoardPC059, kBoardTLU, kBoardFIB]:
         lI2CBusNode = lIO.getNode("i2c")
         lSIChip = SI534xSlave(lI2CBusNode, lI2CBusNode.getSlave('SI5345').getI2CAddress())
     else:
         lSIChip = lIO.getNode('pll_i2c')
+    if lBoardType == kBoardFIB: 
+        secho("skip clock stuff until we get a real fib", fg='red')
+        return
 
     echo("PLL Configuration id: {}".format(style(lSIChip.readConfigID(), fg='cyan')))
     if verbose:
@@ -536,108 +583,6 @@ def dacsetup(ctx, obj, value):
 
 # ------------------------------------------------------------------------------
 
-#sfp related functions
-def GetCalibSlopeFromSFP(lSFP,index):
-    # calib slope addresses, each slope is 16 bits
-    slope_adr = [ [0x4C, 0x4D], #laser current
-                  [0x50, 0x51], #tx_pwr
-                  [0x54, 0x55], #temp
-                  [0x58, 0x59] ]#voltage supply
-    slope_whole = lSFP.readI2C(0x51,slope_adr[index][0])
-    slope_decimal = lSFP.readI2C(0x51,slope_adr[index][1]) / 256.0
-    return slope_whole+slope_decimal
-
-def GetCalibOffsetFromSFP(lSFP,index):
-    # calib slope addresses, each slope is 16 bits
-    slope_adr = [ [0x4E, 0x4F],  #laser current
-                  [0x52, 0x53],  #tx_pwr
-                  [0x56, 0x57],  #temp
-                  [0x5A, 0x5B] ] #voltage supply
-    
-    offset = lSFP.readI2C(0x51,slope_adr[index][0])
-    #first bit corresponds to sign
-    if (offset & (1 << (8 - 1))) != 0:
-        offset = offset - (1 << 8)
-    return (offset << 8) | lSFP.readI2C(0x51,slope_adr[index][1])
-#####
-
-# temperature
-def GetSFPTemperatureRaw(lSFP):
-    temp_raw_whole = lSFP.readI2C(0x51,0x60)
-    #first bit corresponds to sign
-    if (temp_raw_whole & (1 << (8 - 1))) != 0:
-        temp_raw_whole = temp_raw_whole - (1 << 8)
-    temp_raw_decimal = lSFP.readI2C(0x51,0x61) / 256.0
-    return temp_raw_whole + temp_raw_decimal
-
-def GetSFPTemperatureCalibrated(lSFP):
-    temp_raw = GetSFPTemperatureRaw(lSFP)
-    slope = GetCalibSlopeFromSFP(lSFP,2)
-    offset = GetCalibOffsetFromSFP(lSFP,2)
-    return (temp_raw*slope) + offset
-#######
-
-# voltage
-def GetSFPVoltageRaw(lSFP):
-    return (lSFP.readI2C(0x51,0x62) << 8) | lSFP.readI2C(0x51,0x63)
-
-def GetSFPVoltageCalibrated(lSFP):
-    voltage_raw = GetSFPVoltageRaw(lSFP)
-    slope = GetCalibSlopeFromSFP(lSFP,3)
-    offset = GetCalibOffsetFromSFP(lSFP,3)
-    return ((voltage_raw*slope)+offset)*1e-4
-#########
-
-
-# rx power
-def GetSFPRxPowerRaw(lSFP):
-    return (lSFP.readI2C(0x51,0x68) << 8) | lSFP.readI2C(0x51,0x69)
-
-def GetSFPRxPowerCalibrated(lSFP):
-    rx_pwr_raw = GetSFPRxPowerRaw(lSFP)
-
-    # rx power calib constants, 5 4-byte (floats) parameters
-    rx_pars_adr = [[0x48, 0x49, 0x4A, 0x4B], [0x44, 0x45, 0x46, 0x47], [0x40, 0x41, 0x42, 0x43], [0x3C, 0x3D, 0x3E, 0x3F], [0x38, 0x39, 0x3A, 0x3B]]
-    rx_pars = []
-    for par_adr in rx_pars_adr:
-        par=0
-        for adr in par_adr:
-            val = lSFP.readI2C(0x51,adr)
-            par = (par << 8) | val
-            #print(format(par, '032b'))
-        par = struct.unpack("<f", struct.pack("<i", par))[0] # convert the 32 bits to a float
-        rx_pars.append(par)
-
-    rx_pars_counter=0
-    rx_pwr_calib=0
-    for par in rx_pars:
-        rx_pwr_calib = rx_pwr_calib + (par*pow(rx_pwr_raw,rx_pars_counter))
-        rx_pars_counter=rx_pars_counter+1
-    return rx_pwr_calib*0.1
-#####
-
-# tx power
-def GetSFPTxPowerRaw(lSFP):
-    return (lSFP.readI2C(0x51,0x66) << 8) | lSFP.readI2C(0x51,0x67)
-
-def GetSFPTxPowerCalibrated(lSFP):
-    tx_power_raw = GetSFPTxPowerRaw(lSFP)
-    slope = GetCalibSlopeFromSFP(lSFP,1)
-    offset = GetCalibOffsetFromSFP(lSFP,1)
-    return ((tx_power_raw*slope) + offset)*0.1
-######
-
-
-# current
-def GetSFPCurrentRaw(lSFP):
-    return (lSFP.readI2C(0x51,0x64) << 8) | lSFP.readI2C(0x51,0x65)
-
-def GetSFPCurrentCalibrated(lSFP):
-    current_raw = GetSFPCurrentRaw(lSFP)
-    slope = GetCalibSlopeFromSFP(lSFP,0)
-    offset = GetCalibOffsetFromSFP(lSFP,0)
-    return ((current_raw*slope) + offset)*0.002
-####
 
 # ------------------------------------------------------------------------------
 @io.command('sfp-status', short_help="Read SFP parameters.")
@@ -655,95 +600,25 @@ def sfpstatus(ctx, obj):
 
     lIO = lDevice.getNode('io')
 
-    if ( lBoardType != kBoardFMC ):
-        click.ClickException("Only timing FMC supported at the moment")
-
-    lSFP = lIO.getNode('sfp_i2c')
-
-    # vendor name
-    vendor=''
-    for adr in range(0x14, 0x23):
-        char = lSFP.readI2C(0x50,adr)
-        vendor=vendor+chr(char)
-
-    #vendor part number
-    pn=''
-    for adr in range(0x28, 0x37):
-        char = lSFP.readI2C(0x50,adr)
-        pn=pn+chr(char)
-
-    echo("SFP Vendor '{}' PN '{}' \n".format(
-        style(vendor, fg='blue'),
-        style(pn, fg='blue')
-    ))
-
-    #mon_diag_type = lSFP.readI2C(0x50,0x5C)
-    #print("Monitor diag type: "+format(mon_diag_type, '08b'))
-
-    secho("Measured SFP parameters", fg='cyan')
-    temp_calib = GetSFPTemperatureCalibrated(lSFP)
-    print("Temperature        : {:.1f} C".format(temp_calib))
-    
-    voltage_calib = GetSFPVoltageCalibrated(lSFP)
-    print("Supply voltage     : {:.1f} V".format(voltage_calib))
-
-    rx_power_calib=GetSFPRxPowerCalibrated(lSFP)
-    print("Rx power           : {:.1f} uW".format(rx_power_calib))
-
-    tx_power_calib = GetSFPTxPowerCalibrated(lSFP)
-    print("Tx power           : {:.1f} uW".format(tx_power_calib))
-
-    current_calib = GetSFPCurrentCalibrated(lSFP)
-    print("Laser bias current : {:.1f} mA".format(current_calib))
-
-    echo("")
-
-    secho("Tx disable controls", fg='cyan')
-
-    #check if sfp supports sft tx control
-    enhanced_options = lSFP.readI2C(0x50,0x5d)
-
-    # bit 6 tells us whether the soft tx control is implemented in this sfp
-    soft_tx_control_enabled_mask = 0b01000000
-    soft_tx_control_enabled = enhanced_options&soft_tx_control_enabled_mask
-
-    print("Tx disable reg supported: {}".format(soft_tx_control_enabled != 0))
-
-    # get optional status/control bits
-    opt_status_ctrl_byte = lSFP.readI2C(0x51,0x6e)    
-
-    # bit 7 tells us the state of tx_disble pin
-    tx_diable_pin_state = 1 if opt_status_ctrl_byte & (1 << 7) != 0 else 0
-    print("Tx disable pin     : {}".format(tx_diable_pin_state))
-
-    # bit 6 tells us the state of tx_disble register
-    tx_diable_reg_state = 1 if opt_status_ctrl_byte & (1 << 6) != 0 else 0
-    print("Tx disable reg     : {}".format(tx_diable_reg_state))
-#    echo("")
-#    
-#    print("Rx power low alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x22) << 8) | lSFP.readI2C(0x51,0x23))*0.1 ))
-#    print("Rx power low warning thresh: {}".format( ((lSFP.readI2C(0x51,0x26) << 8) | lSFP.readI2C(0x51,0x27))*0.1 ))
-#
-#
-#    print("Rx power high warning thresh: {}".format( ((lSFP.readI2C(0x51,0x24) << 8) | lSFP.readI2C(0x51,0x25))*0.1 ))
-#    print("Rx power high alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x20) << 8) | lSFP.readI2C(0x51,0x21))*0.1 ))
-#
-#    echo("")
-#
-#    print("Tx power low alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x1A) << 8) | lSFP.readI2C(0x51,0x1B))*0.1 ))
-#    print("Tx power low warning thresh: {}".format( ((lSFP.readI2C(0x51,0x1E) << 8) | lSFP.readI2C(0x51,0x1F))*0.1 ))
-#
-#    print("Tx power high warning thresh: {}".format( ((lSFP.readI2C(0x51,0x1C) << 8) | lSFP.readI2C(0x51,0x1D))*0.1 ))
-#    print("Tx power high alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x18) << 8) | lSFP.readI2C(0x51,0x19))*0.1 ))
-    #####
+    if ( lBoardType == kBoardFMC ):
+        lSFP = lIO.getNode('sfp_i2c')
+        toolbox.PrintSFPStatus(lSFP)
+    elif lBoardType == kBoardFIB:
+        for i in range(8):
+            nodeName = 'i2c_sfp'+str(i)
+            lSFP = lIO.getNode(nodeName)
+            toolbox.PrintSFPStatus(lSFP)
+    else:
+        raise click.ClickException("Board {} not supported at the moment".format(lBoardType))
 # ------------------------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------------
 @io.command('switch-sfp-tx', short_help="Control sfp tx")
 @click.option('--on/--off', default=False, help='enable/disable tx; default: FALSE')
+@click.option('--sfp-number', 'sfpnumber', required=False, type=click.IntRange(0, 7), help='Number of sfp to control.')
 @click.pass_obj
-def switchsfptx(obj, on):
+def switchsfptx(obj, on, sfpnumber):
 
     lDevice = obj.mDevice
     lBoardType = obj.mBoardType
@@ -752,91 +627,15 @@ def switchsfptx(obj, on):
 
     lIO = lDevice.getNode('io')
 
-    if ( lBoardType != kBoardFMC ):
-        raise click.ClickException("Only timing FMC supported at the moment")
-
-    lSFP = lIO.getNode('sfp_i2c')
-
-    # vendor name
-    vendor=''
-    for adr in range(0x14, 0x23):
-        char = lSFP.readI2C(0x50,adr)
-        vendor=vendor+chr(char)
-
-    #vendor part number
-    pn=''
-    for adr in range(0x28, 0x37):
-        char = lSFP.readI2C(0x50,adr)
-        pn=pn+chr(char)
-
-    echo("SFP Vendor '{}' PN '{}' \n".format(
-        style(vendor, fg='blue'),
-        style(pn, fg='blue')
-    ))
-
-    #check if sfp supports sft tx control
-    enhanced_options = lSFP.readI2C(0x50,0x5d)
-    #print(format(enhanced_options, '08b'))
-
-    # bit 6 tells us whether the soft tx control is implemented in this sfp
-    soft_tx_control_enabled_mask = 0b01000000
-
-    soft_tx_control_enabled = enhanced_options&soft_tx_control_enabled_mask
-    #print(format(soft_tx_control_enabled, '08b'))
-    #print(soft_tx_control_enabled)
-
-    if (not soft_tx_control_enabled):
-        secho("WARNING Soft tx disable not supported by this SFP \n", fg='red')
-
-    # get optional status/control bits
-    opt_status_ctrl_byte = lSFP.readI2C(0x51,0x6e)    
-    secho("Tx parameters", fg='cyan')
-
-    # bit 7 tells us the state of tx_disble pin
-    tx_diable_pin_state = 1 if opt_status_ctrl_byte & (1 << 7) != 0 else 0
-    print("Tx disable pin     : {}".format(tx_diable_pin_state))
-
-    # bit 6 tells us the state of tx_disble register
-    tx_diable_reg_state = 1 if opt_status_ctrl_byte & (1 << 6) != 0 else 0
-    print("Tx disable reg     : {}".format(tx_diable_reg_state))
-
-    tx_power_calib = GetSFPTxPowerCalibrated(lSFP)
-    print("Tx power           : {:.1f} uW".format(tx_power_calib))
-
-    current_calib = GetSFPCurrentCalibrated(lSFP)
-    print("Laser bias current : {:.1f} mA".format(current_calib))
-
-    echo ("")
-
-    #bit 6 also controls the soft the tx
-    if (on):
-        new_opt_status_ctrl_byte = opt_status_ctrl_byte & ~(1 << 6)        
-        secho("Setting tx_disble reg to 0 (switch on)")    
+    if ( lBoardType == kBoardFMC ):
+        lSFP = lIO.getNode('sfp_i2c')
+        toolbox.ControlSFPTxEnable(lSFP,on)
+    elif lBoardType == kBoardFIB:
+        if sfpnumber is None:
+            raise click.ClickException("Board is fib, please supply sfp number")
+        nodeName = 'i2c_sfp'+str(sfpnumber)
+        lSFP = lIO.getNode(nodeName)
+        toolbox.ControlSFPTxEnable(lSFP,on)
     else:
-        new_opt_status_ctrl_byte = opt_status_ctrl_byte | 1 << 6;
-        secho("Setting tx_disble reg to 1 (switch off)")    
-    lSFP.writeI2C(0x51,0x6e,new_opt_status_ctrl_byte)
-    
-    time.sleep(0.2)
-
-    echo("")
-
-    # get optional status/control bits
-    opt_status_ctrl_byte = lSFP.readI2C(0x51,0x6e)
-    
-    secho("Tx parameters", fg='cyan')
-
-    # bit 7 tells us the state of tx_disble pin
-    tx_diable_pin_state = 1 if opt_status_ctrl_byte & (1 << 7) != 0 else 0
-    print("Tx disable pin     : {}".format(tx_diable_pin_state))
-
-    # bit 6 tells us the state of tx_disble register
-    tx_diable_reg_state = 1 if opt_status_ctrl_byte & (1 << 6) != 0 else 0
-    print("Tx disable reg     : {}".format(tx_diable_reg_state))
-
-    tx_power_calib = GetSFPTxPowerCalibrated(lSFP)
-    print("Tx power           : {:.1f} uW".format(tx_power_calib))
-
-    current_calib = GetSFPCurrentCalibrated(lSFP)
-    print("Laser bias current : {:.1f} mA".format(current_calib))
+        raise click.ClickException("Board {} not supported at the moment".format(lBoardType))
 # ------------------------------------------------------------------------------
