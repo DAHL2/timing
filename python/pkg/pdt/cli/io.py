@@ -28,6 +28,7 @@ kPC059Rev1 = 3
 kPC059FanoutHDMI = 4
 kPC059FanoutSFP = 5
 kTLURev1 = 6
+kFIBEndpoint = 7
 
 kClockConfigMap = {
     kFMCRev1: "SI5344/PDTS0000.txt",
@@ -35,7 +36,8 @@ kClockConfigMap = {
     kPC059Rev1: "SI5345/PDTS0005.txt",
     kPC059FanoutHDMI: "devel/PDTS_PC059_FANOUT.txt",
     kPC059FanoutSFP: "wr/FANOUT_PLL_WIDEBW_SFPIN.txt",
-    kTLURev1: "wr/TLU_EXTCLK_10MHZ_NOZDM.txt"
+    kTLURev1: "wr/TLU_EXTCLK_10MHZ_NOZDM.txt",
+    kFIBEndpoint: "devel/Si5395-RevA-FIB_EPT-Registers.txt"
 }
 
 kUIDRevisionMap = {
@@ -150,7 +152,7 @@ def reset(ctx, obj, soft, fanout, forcepllcfg, sfpmuxsel):
         
         # PLL and I@C reset 
         if lBoardType == kBoardFIB:
-            #reset expanders
+            #reset expanders, reset of pll is done later
             lIO.getNode('csr.ctrl.rstb_i2c').write(0x1)
         else:
             lIO.getNode('csr.ctrl.pll_rst').write(0x1)
@@ -222,6 +224,7 @@ def reset(ctx, obj, soft, fanout, forcepllcfg, sfpmuxsel):
             lPROMSlave =  'UID_PROM'
         elif lCarrierType == kCarrierAFC:
             lPROMSlave = 'AFC_FMC_UID_PROM'
+        #updae prom address for real fib on enclustra, at the momment it looks at old fmc address
 
         lValues = lUID.getSlave(lPROMSlave).readI2CArray(0xfa, 6)
         lUniqueID = 0x0
@@ -240,6 +243,17 @@ def reset(ctx, obj, soft, fanout, forcepllcfg, sfpmuxsel):
         if lBoardType in [kBoardPC059, kBoardTLU, kBoardFIB]:
             lI2CBusNode = lDevice.getNode("io.i2c")
             lSIChip = SI534xSlave(lI2CBusNode, lI2CBusNode.getSlave('SI5345').getI2CAddress())
+
+            if lBoardType == kBoardFIB:
+                
+                secho("placeholder for pll reset", fg='magenta')
+
+                #configure i2c expander to reset pll ic; commented out until real fib
+                #lExpander2 = I2CExpanderSlave(lI2CBusNode, lI2CBusNode.getSlave('Expander2').getI2CAddress())
+                #lExpander2.setInversion(0, 0x00)
+                #lExpander2.setIO(0, 0x1e)
+                #lExpander2.setOutputs(0, 0x01)
+                #lExpander2.setOutputs(0, 0x00)
         else:
             lSIChip = lIO.getNode('pll_i2c')
         if lBoardType != kBoardFIB: # temp until we get a real fib
@@ -257,9 +271,8 @@ def reset(ctx, obj, soft, fanout, forcepllcfg, sfpmuxsel):
             elif lDesignType == kDesingFanout and fanout in [0]:
                 secho("Overriding clock config - fanout mode", fg='green')
                 lClockConfigPath = kClockConfigMap[kPC059FanoutHDMI if fanout == 1 else kPC059FanoutSFP]
-            elif lBoardType == kBoardFIB:
-                secho("temp solution for clock config until we get a fib", fg='red')
-                lClockConfigPath=""
+            elif lBoardType == kBoardFIB and lDesignType == kDesignEndpoint:
+                lClockConfigPath=kClockConfigMap[kFIBEndpoint]
             else:
                 try:
                     lClockConfigPath = kClockConfigMap[lRevision]    
@@ -277,7 +290,7 @@ def reset(ctx, obj, soft, fanout, forcepllcfg, sfpmuxsel):
             echo("SI3545 configuration id: {}".format(style(lSIChip.readConfigID(), fg='green')))
 
 
-        if lDesignType == kDesingFanout:
+        if lBoardType == kBoardPC059 and lDesignType == kDesingFanout:
             lDevice.getNode('switch.csr.ctrl.master_src').write(fanout)
             lIO.getNode('csr.ctrl.mux').write(0)
             lDevice.dispatch()
@@ -349,20 +362,16 @@ def reset(ctx, obj, soft, fanout, forcepllcfg, sfpmuxsel):
             secho("DAC1 and DAC2 set to " + hex(lBISignalThreshold), fg='cyan')
 
         elif lBoardType == kBoardFIB:
+
             lIO.getNode('csr.ctrl.inmux').write(sfpmuxsel)
             lIO.getClient().dispatch()
             secho("Active sfp mux " + hex(sfpmuxsel), fg='cyan')
-             
-             # comment out until the real fib
+            
+            lI2CBusNode = lDevice.getNode("io.i2c")
+            # comment out until the real fib
 #            lExpander1 = I2CExpanderSlave(lI2CBusNode, lI2CBusNode.getSlave('Expander1').getI2CAddress())
 #            lExpander2 = I2CExpanderSlave(lI2CBusNode, lI2CBusNode.getSlave('Expander2').getI2CAddress())
 #            
-#            # reset pll chip
-#            lExpander2.setInversion(0, 0x00)
-#            lExpander2.setIO(0, 0x1e)
-#            lExpander2.setOutputs(0, 0x01)
-#            lExpander2.setOutputs(0, 0x00)
-#
 #            #confugre sfp los receiver bank
 #            lExpander2.setInversion(1, 0x00)
 #            lExpander2.setIO(1, 0xff)
@@ -473,7 +482,7 @@ def clkstatus(ctx, obj, verbose):
     else:
         lSIChip = lIO.getNode('pll_i2c')
     if lBoardType == kBoardFIB: 
-        secho("skip clock stuff until we get a real fib", fg='red')
+        secho("skip clock stuff until we get a real fib", fg='magenta')
         return
 
     echo("PLL Configuration id: {}".format(style(lSIChip.readConfigID(), fg='cyan')))
