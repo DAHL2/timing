@@ -546,7 +546,7 @@ def readGPIOPortOverIPMI(ipmi_connection, port):
     # first 4 bytes contain the pin directions    
     port_directions_flag=0b0
     for i in range(4,0,-1):
-       port_directions_flag = (port_directions_flag << 8) | cmd_result[i]
+        port_directions_flag = (port_directions_flag << 8) | cmd_result[i]
 
     # second 4 bytes contain the pin states
     port_states_flag=0b0
