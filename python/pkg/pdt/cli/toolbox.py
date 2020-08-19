@@ -736,166 +736,145 @@ def GetSFPCurrentCalibrated(lSFP):
 
 
 # ------------------------------------------------------------------------------
-def PrintSFPStatus(lSFP):
-    # vendor name
+def PrintSFPStatus(lSFP, sfpNumber):
+    sfpTable = Texttable(max_width=0)
+    sfpTable.set_deco(Texttable.VLINES | Texttable.BORDER | Texttable.HEADER)
+    sfpTable.set_cols_align(["c", "c"])
+    sfpTable.set_chars(['-', '|', '+', '-'])
+
+    # SFP number
+    sfpTable.add_row( ['SFP #', sfpNumber] )
+
+    # Is the sfp reachable?
+    if not lSFP.ping(0x50):
+        if not lSFP.ping(0x51):
+            # SFP should present address 0x50, or 0x51, or both, but not none
+            return sfpTable.draw()
+        else:
+            # If only address 0x51 is visible, SFP requires special I2C change to swap between memory areas
+            secho("SFP in mode 0x51, special I2C address change not supported", fg='red')
+            return sfpTable.draw()
+    
+    # Vendor name
     vendor=''
     for adr in range(0x14, 0x23):
         char = lSFP.readI2C(0x50,adr)
         vendor=vendor+chr(char)
-
-    #vendor part number
+    sfpTable.add_row( ['Vendor', vendor] )
+     
+    # Vendor part number
     pn=''
     for adr in range(0x28, 0x37):
         char = lSFP.readI2C(0x50,adr)
         pn=pn+chr(char)
+    sfpTable.add_row( ['Part number', pn] )
 
-    echo("SFP Vendor '{}' PN '{}' \n".format(
-        style(vendor, fg='blue'),
-        style(pn, fg='blue')
-    ))
-
-    #mon_diag_type = lSFP.readI2C(0x50,0x5C)
-    #print("Monitor diag type: "+format(mon_diag_type, '08b'))
-
-    secho("Measured SFP parameters", fg='cyan')
-    temp_calib = GetSFPTemperatureCalibrated(lSFP)
-    print("Temperature        : {:.1f} C".format(temp_calib))
+    # Bit 6 of byte 5C tells us whether the SFP supports digital diagnostic monitoring (DDM)
+    ddm_info = lSFP.readI2C(0x50,0x5C)
+    mon_diag_mask = 0b01000000
+    mon_diag_enabled = ddm_info&mon_diag_mask
     
+    if not mon_diag_enabled:
+        return sfpTable.draw()
+
+    # Bit 2 of byte 5C tells us whether special I2C address change operations are needed to access the DDM area
+    adr_change_mask = 0b00000100
+    adr_change_needed = ddm_info&adr_change_mask
+
+    if adr_change_needed:
+        secho("Special I2C address change not supported", fg='red')
+        return sfpTable.draw()
+
+    temp_calib = GetSFPTemperatureCalibrated(lSFP)
+    sfpTable.add_row( ['Temperature', "{:.1f} C".format(temp_calib)] )
+        
     voltage_calib = GetSFPVoltageCalibrated(lSFP)
-    print("Supply voltage     : {:.1f} V".format(voltage_calib))
+    sfpTable.add_row( ['Supply voltage', "{:.1f} V".format(voltage_calib)] )
 
     rx_power_calib = GetSFPRxPowerCalibrated(lSFP)
-    print("Rx power           : {:.1f} uW".format(rx_power_calib))
+    sfpTable.add_row( ['Rx power', "{:.1f} uW".format(rx_power_calib)] )
 
     tx_power_calib = GetSFPTxPowerCalibrated(lSFP)
-    print("Tx power           : {:.1f} uW".format(tx_power_calib))
+    sfpTable.add_row( ['Tx power', "{:.1f} uW".format(tx_power_calib)] )
 
     current_calib = GetSFPCurrentCalibrated(lSFP)
-    print("Laser bias current : {:.1f} mA".format(current_calib))
+    sfpTable.add_row( ['Laser bias current',  "{:.1f} mA".format(current_calib)] )
 
-    echo("")
-
-    secho("Tx disable controls", fg='cyan')
-
-    #check if sfp supports sft tx control
+    # Bit 6 of byte 5d tells us whether the soft tx control is implemented in this sfp
     enhanced_options = lSFP.readI2C(0x50,0x5d)
-
-    # bit 6 tells us whether the soft tx control is implemented in this sfp
     soft_tx_control_enabled_mask = 0b01000000
     soft_tx_control_enabled = enhanced_options&soft_tx_control_enabled_mask
 
-    print("Tx disable reg supported: {}".format(soft_tx_control_enabled != 0))
+    # Get optional status/control bits
+    opt_status_ctrl_byte = lSFP.readI2C(0x51,0x6e) 
 
-    # get optional status/control bits
-    opt_status_ctrl_byte = lSFP.readI2C(0x51,0x6e)    
+    if soft_tx_control_enabled:
+        sfpTable.add_row( ['Tx disbale reg supported',  'True'] )
 
-    # bit 7 tells us the state of tx_disble pin
+        # Bit 6 tells us the state of the soft tx_disble register
+        tx_diable_reg_state = 1 if opt_status_ctrl_byte & (1 << 6) != 0 else 0
+        sfpTable.add_row( ['Tx disable reg', "{}".format(tx_diable_reg_state)] )
+    else:
+        sfpTable.add_row( ['Tx disbale reg supported',  'False'] )
+
+    # Bit 7 tells us the state of tx_disble pin
     tx_diable_pin_state = 1 if opt_status_ctrl_byte & (1 << 7) != 0 else 0
-    print("Tx disable pin     : {}".format(tx_diable_pin_state))
+    sfpTable.add_row( ['Tx disable pin', "{}".format(tx_diable_pin_state)] )
 
-    # bit 6 tells us the state of tx_disble register
-    tx_diable_reg_state = 1 if opt_status_ctrl_byte & (1 << 6) != 0 else 0
-    print("Tx disable reg     : {}".format(tx_diable_reg_state))
-#    echo("")
-#    
-#    print("Rx power low alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x22) << 8) | lSFP.readI2C(0x51,0x23))*0.1 ))
-#    print("Rx power low warning thresh: {}".format( ((lSFP.readI2C(0x51,0x26) << 8) | lSFP.readI2C(0x51,0x27))*0.1 ))
-#
-#
-#    print("Rx power high warning thresh: {}".format( ((lSFP.readI2C(0x51,0x24) << 8) | lSFP.readI2C(0x51,0x25))*0.1 ))
-#    print("Rx power high alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x20) << 8) | lSFP.readI2C(0x51,0x21))*0.1 ))
-#
-#    echo("")
-#
-#    print("Tx power low alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x1A) << 8) | lSFP.readI2C(0x51,0x1B))*0.1 ))
-#    print("Tx power low warning thresh: {}".format( ((lSFP.readI2C(0x51,0x1E) << 8) | lSFP.readI2C(0x51,0x1F))*0.1 ))
-#
-#    print("Tx power high warning thresh: {}".format( ((lSFP.readI2C(0x51,0x1C) << 8) | lSFP.readI2C(0x51,0x1D))*0.1 ))
-#    print("Tx power high alarm thresh  : {}".format( ((lSFP.readI2C(0x51,0x18) << 8) | lSFP.readI2C(0x51,0x19))*0.1 ))
-
+    return sfpTable.draw()
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
-def ControlSFPTxEnable(lSFP,on):
-    # vendor name
-    vendor=''
-    for adr in range(0x14, 0x23):
-        char = lSFP.readI2C(0x50,adr)
-        vendor=vendor+chr(char)
+def ControlSFPTxEnable(lSFP,on,sfpNumber):
 
-    #vendor part number
-    pn=''
-    for adr in range(0x28, 0x37):
-        char = lSFP.readI2C(0x50,adr)
-        pn=pn+chr(char)
+    # Is the sfp reachable?
+    if not lSFP.ping(0x50):
+        if not lSFP.ping(0x51):
+            # SFP should present address 0x50, or 0x51, or both, but not none
+            secho("SFP not available", fg='red')
+            return
+        else:
+            # If only address 0x51 is visible, SFP requires special I2C change to swap between memory areas
+            secho("SFP in mode 0x51, special I2C address change not supported", fg='red')
+            return
 
-    echo("SFP Vendor '{}' PN '{}' \n".format(
-        style(vendor, fg='blue'),
-        style(pn, fg='blue')
-    ))
+    # Bit 6 of byte 5C tells us whether the SFP supports digital diagnostic monitoring (DDM)
+    ddm_info = lSFP.readI2C(0x50,0x5C)
+    mon_diag_mask = 0b01000000
+    mon_diag_enabled = ddm_info&mon_diag_mask
+    
+    if not mon_diag_enabled:
+        secho("SFP does not support DDM", fg='red')
+        return
 
-    #check if sfp supports sft tx control
+    # Bit 2 of byte 5C tells us whether special I2C address change operations are needed to access the DDM area
+    adr_change_mask = 0b00000100
+    adr_change_needed = ddm_info&adr_change_mask
+
+    if adr_change_needed:
+        secho("Special I2C address change not supported", fg='red')
+        return
+
     enhanced_options = lSFP.readI2C(0x50,0x5d)
-    #print(format(enhanced_options, '08b'))
 
-    # bit 6 tells us whether the soft tx control is implemented in this sfp
+    # Bit 6 of byte 0x5d tells us whether the soft tx control is implemented in this sfp
     soft_tx_control_enabled_mask = 0b01000000
-
     soft_tx_control_enabled = enhanced_options&soft_tx_control_enabled_mask
-    #print(format(soft_tx_control_enabled, '08b'))
-    #print(soft_tx_control_enabled)
 
     if (not soft_tx_control_enabled):
         secho("WARNING Soft tx disable not supported by this SFP \n", fg='red')
 
-    # get optional status/control bits
+    # Get optional status/control bits
     opt_status_ctrl_byte = lSFP.readI2C(0x51,0x6e)    
-    secho("Tx parameters", fg='cyan')
 
-    # bit 7 tells us the state of tx_disble pin
-    tx_diable_pin_state = 1 if opt_status_ctrl_byte & (1 << 7) != 0 else 0
-    print("Tx disable pin     : {}".format(tx_diable_pin_state))
-
-    # bit 6 tells us the state of tx_disble register
-    tx_diable_reg_state = 1 if opt_status_ctrl_byte & (1 << 6) != 0 else 0
-    print("Tx disable reg     : {}".format(tx_diable_reg_state))
-
-    tx_power_calib = GetSFPTxPowerCalibrated(lSFP)
-    print("Tx power           : {:.1f} uW".format(tx_power_calib))
-
-    current_calib = GetSFPCurrentCalibrated(lSFP)
-    print("Laser bias current : {:.1f} mA".format(current_calib))
-
-    echo ("")
-
-    #bit 6 also controls the soft the tx
+    # Bit 6 of byte 0x6e controls the soft tx_disable
     if (on):
         new_opt_status_ctrl_byte = opt_status_ctrl_byte & ~(1 << 6)        
-        secho("Setting tx_disble reg to 0 (switch on)")    
     else:
         new_opt_status_ctrl_byte = opt_status_ctrl_byte | 1 << 6;
-        secho("Setting tx_disble reg to 1 (switch off)")    
     lSFP.writeI2C(0x51,0x6e,new_opt_status_ctrl_byte)
     
     time.sleep(0.2)
 
-    echo("")
-
-    # get optional status/control bits
-    opt_status_ctrl_byte = lSFP.readI2C(0x51,0x6e)
-    
-    secho("Tx parameters", fg='cyan')
-
-    # bit 7 tells us the state of tx_disble pin
-    tx_diable_pin_state = 1 if opt_status_ctrl_byte & (1 << 7) != 0 else 0
-    print("Tx disable pin     : {}".format(tx_diable_pin_state))
-
-    # bit 6 tells us the state of tx_disble register
-    tx_diable_reg_state = 1 if opt_status_ctrl_byte & (1 << 6) != 0 else 0
-    print("Tx disable reg     : {}".format(tx_diable_reg_state))
-
-    tx_power_calib = GetSFPTxPowerCalibrated(lSFP)
-    print("Tx power           : {:.1f} uW".format(tx_power_calib))
-
-    current_calib = GetSFPCurrentCalibrated(lSFP)
-    print("Laser bias current : {:.1f} mA".format(current_calib))
+    echo(PrintSFPStatus(lSFP, sfpNumber) )
+# ------------------------------------------------------------------------------

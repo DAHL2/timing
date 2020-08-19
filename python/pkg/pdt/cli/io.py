@@ -28,7 +28,7 @@ kPC059Rev1 = 3
 kPC059FanoutHDMI = 4
 kPC059FanoutSFP = 5
 kTLURev1 = 6
-kFIBEndpoint = 7
+kFIBRev1 = 7
 
 kClockConfigMap = {
     kFMCRev1: "SI5344/PDTS0000.txt",
@@ -37,7 +37,7 @@ kClockConfigMap = {
     kPC059FanoutHDMI: "devel/PDTS_PC059_FANOUT.txt",
     kPC059FanoutSFP: "wr/FANOUT_PLL_WIDEBW_SFPIN.txt",
     kTLURev1: "wr/TLU_EXTCLK_10MHZ_NOZDM.txt",
-    kFIBEndpoint: "devel/Si5395-RevA-FIB_EPT-Registers.txt"
+    kFIBRev1: "devel/Si5395-RevA-EPT_FIB_250MHz-Registers.txt"
 }
 
 kUIDRevisionMap = {
@@ -64,6 +64,8 @@ kUIDRevisionMap = {
     0xd88039d9248e: kPC059Rev1,
     0xd88039d98ae9: kPC059Rev1,
     0xd88039d92498: kPC059Rev1,
+    0x801f12f5ce48: kFIBRev1,
+    0x801f12f5e9ae: kFIBRev1
 }
 
 # ------------------------------------------------------------------------------
@@ -150,7 +152,7 @@ def reset(ctx, obj, soft, fanout, forcepllcfg, sfpmuxsel):
         
         time.sleep(1)
         
-        # PLL and I@C reset 
+        # PLL and I2C reset 
         if lBoardType == kBoardFIB:
             #reset expanders, reset of pll is done later
             lIO.getNode('csr.ctrl.rstb_i2c').write(0x1)
@@ -222,7 +224,7 @@ def reset(ctx, obj, soft, fanout, forcepllcfg, sfpmuxsel):
         lPROMSlave = 'FMC_UID_PROM'
         if lBoardType == kBoardTLU:
             lPROMSlave =  'UID_PROM'
-        elif lCarrierType == kCarrierAFC:
+        elif lBoardType == kBoardFIB:
             lPROMSlave = 'AFC_FMC_UID_PROM'
         #updae prom address for real fib on enclustra, at the momment it looks at old fmc address
 
@@ -245,9 +247,7 @@ def reset(ctx, obj, soft, fanout, forcepllcfg, sfpmuxsel):
             lSIChip = SI534xSlave(lI2CBusNode, lI2CBusNode.getSlave('SI5345').getI2CAddress())
 
             if lBoardType == kBoardFIB:
-                
-                secho("placeholder for pll reset", fg='magenta')
-
+                print("fib placeholder")
                 #configure i2c expander to reset pll ic; commented out until real fib
                 #lExpander2 = I2CExpanderSlave(lI2CBusNode, lI2CBusNode.getSlave('Expander2').getI2CAddress())
                 #lExpander2.setInversion(0, 0x00)
@@ -256,7 +256,6 @@ def reset(ctx, obj, soft, fanout, forcepllcfg, sfpmuxsel):
                 #lExpander2.setOutputs(0, 0x00)
         else:
             lSIChip = lIO.getNode('pll_i2c')
-        if lBoardType != kBoardFIB: # temp until we get a real fib
             lSIVersion = lSIChip.readDeviceVersion()
             echo("PLL version : "+style(hex(lSIVersion), fg='blue'))
 
@@ -271,8 +270,8 @@ def reset(ctx, obj, soft, fanout, forcepllcfg, sfpmuxsel):
             elif lDesignType == kDesingFanout and fanout in [0]:
                 secho("Overriding clock config - fanout mode", fg='green')
                 lClockConfigPath = kClockConfigMap[kPC059FanoutHDMI if fanout == 1 else kPC059FanoutSFP]
-            elif lBoardType == kBoardFIB and lDesignType == kDesignEndpoint:
-                lClockConfigPath=kClockConfigMap[kFIBEndpoint]
+            elif lBoardType == kBoardFIB:
+                lClockConfigPath=kClockConfigMap[kFIBRev1]
             else:
                 try:
                     lClockConfigPath = kClockConfigMap[lRevision]    
@@ -285,9 +284,9 @@ def reset(ctx, obj, soft, fanout, forcepllcfg, sfpmuxsel):
             # Configure the clock chip
             lFullClockConfigPath = expandvars(join('${PDT_TESTS}/etc/clock', lClockConfigPath))
 
-        if lBoardType != kBoardFIB: # temp until we get a real fib
-            lSIChip.configure(lFullClockConfigPath)
-            echo("SI3545 configuration id: {}".format(style(lSIChip.readConfigID(), fg='green')))
+        #if lBoardType != kBoardFIB: # temp until we get a real fib
+        lSIChip.configure(lFullClockConfigPath)
+        echo("SI3545 configuration id: {}".format(style(lSIChip.readConfigID(), fg='green')))
 
 
         if lBoardType == kBoardPC059 and lDesignType == kDesingFanout:
@@ -367,8 +366,8 @@ def reset(ctx, obj, soft, fanout, forcepllcfg, sfpmuxsel):
             lIO.getClient().dispatch()
             secho("Active sfp mux " + hex(sfpmuxsel), fg='cyan')
             
-            lI2CBusNode = lDevice.getNode("io.i2c")
-            # comment out until the real fib
+#            lI2CBusNode = lDevice.getNode("io.i2c")
+           
 #            lExpander1 = I2CExpanderSlave(lI2CBusNode, lI2CBusNode.getSlave('Expander1').getI2CAddress())
 #            lExpander2 = I2CExpanderSlave(lI2CBusNode, lI2CBusNode.getSlave('Expander2').getI2CAddress())
 #            
@@ -454,6 +453,40 @@ def status(ctx, obj, verbose):
         print('Active SFPS:',lActive)
 # ------------------------------------------------------------------------------
 
+# ------------------------------------------------------------------------------
+@io.command('debug')
+@click.pass_context
+@click.pass_obj
+def debug(ctx, obj):
+    lDevice = obj.mDevice
+    lBoardType = obj.mBoardType
+    lCarrierType = obj.mCarrierType
+    lDesignType = obj.mDesignType
+
+    lIO = lDevice.getNode('io')
+
+    # Global soft reset
+    #lIO.getNode('csr.ctrl.soft_rst').write(0x1)
+    #lIO.getNode('csr.ctrl.soft_rst').write(0x0)
+    #lDevice.dispatch()
+    
+    # Control I2C reset line (inverted in fw)
+    #lIO.getNode('csr.ctrl.rstb_i2c').write(0x0)
+    #lDevice.dispatch()
+
+    # Get the main I2C bus master
+    lI2CBusNode = lDevice.getNode("io.i2c")
+    
+    # Do an I2C bus address scan
+    #i2cdevices = lI2CBusNode.scan()
+    # Print the list of addresses which responded
+    #print ('[{}]'.format(', '.join(hex(x) for x in i2cdevices)))
+
+    # Attempt an I2C transaction with a particular address
+    # True if transaction successful, False if not
+    #print(lI2CBusNode.ping(0x74))
+    #print(lI2CBusNode.ping(0x50))
+# ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
 @io.command('clk-status')
@@ -481,9 +514,6 @@ def clkstatus(ctx, obj, verbose):
         lSIChip = SI534xSlave(lI2CBusNode, lI2CBusNode.getSlave('SI5345').getI2CAddress())
     else:
         lSIChip = lIO.getNode('pll_i2c')
-    if lBoardType == kBoardFIB: 
-        secho("skip clock stuff until we get a real fib", fg='magenta')
-        return
 
     echo("PLL Configuration id: {}".format(style(lSIChip.readConfigID(), fg='cyan')))
     if verbose:
@@ -611,12 +641,12 @@ def sfpstatus(ctx, obj):
 
     if ( lBoardType == kBoardFMC ):
         lSFP = lIO.getNode('sfp_i2c')
-        toolbox.PrintSFPStatus(lSFP)
+        echo( toolbox.PrintSFPStatus(lSFP, 0) )
     elif lBoardType == kBoardFIB:
         for i in range(8):
             nodeName = 'i2c_sfp'+str(i)
             lSFP = lIO.getNode(nodeName)
-            toolbox.PrintSFPStatus(lSFP)
+            echo( toolbox.PrintSFPStatus(lSFP, i) )
     else:
         raise click.ClickException("Board {} not supported at the moment".format(lBoardType))
 # ------------------------------------------------------------------------------
@@ -628,6 +658,9 @@ def sfpstatus(ctx, obj):
 @click.option('--sfp-number', 'sfpnumber', required=False, type=click.IntRange(0, 7), help='Number of sfp to control.')
 @click.pass_obj
 def switchsfptx(obj, on, sfpnumber):
+    '''
+    Toggle SFP tx disable reg (if supported)
+    '''
 
     lDevice = obj.mDevice
     lBoardType = obj.mBoardType
@@ -638,13 +671,13 @@ def switchsfptx(obj, on, sfpnumber):
 
     if ( lBoardType == kBoardFMC ):
         lSFP = lIO.getNode('sfp_i2c')
-        toolbox.ControlSFPTxEnable(lSFP,on)
+        toolbox.ControlSFPTxEnable(lSFP,on,0)
     elif lBoardType == kBoardFIB:
         if sfpnumber is None:
-            raise click.ClickException("Board is fib, please supply sfp number")
+            raise click.ClickException("Board is a FIB, please specify SFP to control")
         nodeName = 'i2c_sfp'+str(sfpnumber)
         lSFP = lIO.getNode(nodeName)
-        toolbox.ControlSFPTxEnable(lSFP,on)
+        toolbox.ControlSFPTxEnable(lSFP,on,sfpnumber)
     else:
         raise click.ClickException("Board {} not supported at the moment".format(lBoardType))
 # ------------------------------------------------------------------------------

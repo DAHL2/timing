@@ -15,6 +15,9 @@
   <connection id="PROD_FANOUT_2"     uri="ipbusudp-2.0://192.168.200.67:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a2/fanout_pc059/top.xml" />
 
   <connection id="EPT_0"             uri="ipbusudp-2.0://192.168.200.16:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a2/endpoint_fmc/top.xml" />
+  <connection id="EPT_0_3"             uri="ipbusudp-2.0://192.168.200.16:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a3/endpoint_fmc/top.xml" />
+  <connection id="EPT_1_3"             uri="ipbusudp-2.0://192.168.200.17:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a3/endpoint_fmc/top.xml" />
+
   <connection id="EPT_1"             uri="ipbusudp-2.0://192.168.200.17:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a2/endpoint_fmc/top.xml" />
 
   <connection id="EPT_AFC"           uri="ipbusudp-2.0://192.168.121.100:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a2/endpoint_fmc/top.xml" />
@@ -22,7 +25,14 @@
   <connection id="EPT_FIB_ENC"       uri="ipbusudp-2.0://192.168.200.16:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a4/endpoint_fib/top.xml" />
   <connection id="EPT_FIB_AFC"       uri="ipbusudp-2.0://192.168.121.100:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a4/endpoint_fib/top.xml" />
 
-  <!-- Tunnels -->
+  <connection id="FAN_FIB_AFC"       uri="ipbusudp-2.0://192.168.121.100:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a4/fanout_fib/top.xml" />
+
+  <connection id="OURO_FIB_AFC"      uri="ipbusudp-2.0://192.168.121.100:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a4/ouroboros_fib/top.xml" />
+  
+  <connection id="CRT_0"       uri="ipbusudp-2.0://192.168.200.16:50001" address_table="file:///${PDT_TESTS}/etc/addrtab/v5a2/crt_fmc/top.xml" />
+  <connection id="CRT_1"       uri="ipbusudp-2.0://192.168.200.17:50001" address_table="file:///${PDT_TESTS}/etc/addrtab/v5a2/crt_fmc/top.xml" />  
+
+ <!-- Tunnels -->
   <connection id="PRIMARY_TUN"       uri="chtcp-2.0://localhost:60708?target=192.168.200.16:50001" address_table="file:///${PDT_TESTS}/etc/addrtab/v5a2/ouroboros_fmc/top.xml" />  
   <connection id="SECONDARY_TUN"     uri="chtcp-2.0://localhost:60708?target=192.168.200.17:50001" address_table="file:///${PDT_TESTS}/etc/addrtab/v5a2/ouroboros_fmc/top.xml" />    
   <connection id="TERTIARY_TUN"      uri="chtcp-2.0://localhost:60708?target=192.168.200.32:50001" address_table="file:///${PDT_TESTS}/etc/addrtab/v5a2/ouroboros_pc059/top_pc059.xml" />    
