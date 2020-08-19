@@ -752,7 +752,7 @@ def PrintSFPStatus(lSFP, sfpNumber):
             return sfpTable.draw()
         else:
             # If only address 0x51 is visible, SFP requires special I2C change to swap between memory areas
-            secho("SFP in mode 0x51, special I2C address change not supported", fg='red')
+            secho("SFP in mode 0x51, special I2C address change not implemented", fg='red')
             return sfpTable.draw()
     
     # Vendor name
