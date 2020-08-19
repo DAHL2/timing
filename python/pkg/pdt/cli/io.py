@@ -455,8 +455,8 @@ def status(ctx, obj, verbose):
 
 # ------------------------------------------------------------------------------
 @io.command('debug')
-@click.pass_context
 @click.pass_obj
+@click.pass_context
 def debug(ctx, obj):
     lDevice = obj.mDevice
     lBoardType = obj.mBoardType
@@ -478,14 +478,14 @@ def debug(ctx, obj):
     lI2CBusNode = lDevice.getNode("io.i2c")
     
     # Do an I2C bus address scan
-    #i2cdevices = lI2CBusNode.scan()
+    i2cdevices = lI2CBusNode.scan()
     # Print the list of addresses which responded
-    #print ('[{}]'.format(', '.join(hex(x) for x in i2cdevices)))
+    print ('[{}]'.format(', '.join(hex(x) for x in i2cdevices)))
 
     # Attempt an I2C transaction with a particular address
     # True if transaction successful, False if not
-    #print(lI2CBusNode.ping(0x74))
-    #print(lI2CBusNode.ping(0x50))
+    print(lI2CBusNode.ping(0x74))
+    print(lI2CBusNode.ping(0x50))
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
