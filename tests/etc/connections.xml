@@ -22,12 +22,12 @@
 
   <connection id="EPT_AFC"           uri="ipbusudp-2.0://192.168.121.100:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a2/endpoint_fmc/top.xml" />
 
-  <connection id="EPT_FIB_ENC"       uri="ipbusudp-2.0://192.168.200.16:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a4/endpoint_fib/top.xml" />
-  <connection id="EPT_FIB_AFC"       uri="ipbusudp-2.0://192.168.121.100:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a4/endpoint_fib/top.xml" />
+  <connection id="EPT_FIB_ENC"       uri="ipbusudp-2.0://192.168.200.16:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a3/endpoint_fib/top.xml" />
+  <connection id="EPT_FIB_AFC"       uri="ipbusudp-2.0://192.168.121.100:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a3/endpoint_fib/top.xml" />
 
-  <connection id="FAN_FIB_AFC"       uri="ipbusudp-2.0://192.168.121.100:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a4/fanout_fib/top.xml" />
+  <connection id="FAN_FIB_AFC"       uri="ipbusudp-2.0://192.168.121.100:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a3/fanout_fib/top.xml" />
 
-  <connection id="OURO_FIB_AFC"      uri="ipbusudp-2.0://192.168.121.100:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a4/ouroboros_fib/top.xml" />
+  <connection id="OURO_FIB_AFC"      uri="ipbusudp-2.0://192.168.121.100:50001" address_table="file://${PDT_TESTS}/etc/addrtab/v5a3/ouroboros_fib/top.xml" />
   
   <connection id="CRT_0"       uri="ipbusudp-2.0://192.168.200.16:50001" address_table="file:///${PDT_TESTS}/etc/addrtab/v5a2/crt_fmc/top.xml" />
   <connection id="CRT_1"       uri="ipbusudp-2.0://192.168.200.17:50001" address_table="file:///${PDT_TESTS}/etc/addrtab/v5a2/crt_fmc/top.xml" />  
