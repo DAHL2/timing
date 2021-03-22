@@ -606,10 +606,13 @@ def configureGPIOPortOverIPMI(ipmi_connection, port, mode, pin, value=-1):
             if value < 0:
                 return
             else:
-                cmd_result[2] == value
-                return
+                if cmd_result[2] == value:
+                    return
+                else:
+                    echo ("error configured pin state {}, does not match requested {}".format(cmd_result[2], value))
+                    cmd_attempts += 1
         else:
-            read_attempts += 1
+            cmd_attempts += 1
 # ------------------------------------------------------------------------------
 
 
@@ -692,8 +695,9 @@ def GetSFPRxPowerCalibrated(lSFP):
         for adr in par_adr:
             val = lSFP.readI2C(0x51,adr)
             par = (par << 8) | val
-            #print(format(par, '032b'))
+        #print(format(par, '032b'))
         par = struct.unpack("<f", struct.pack("<i", par))[0] # convert the 32 bits to a float
+        #print("float: {}".format(par))
         rx_pars.append(par)
 
     rx_pars_counter=0
