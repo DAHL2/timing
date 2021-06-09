@@ -107,7 +107,7 @@ GlobalNode::enable_upstream_endpoint(uint32_t timeout) // NOLINT(build/unsigned)
     auto now = std::chrono::high_resolution_clock::now();
     msSinceStart = std::chrono::duration_cast<std::chrono::milliseconds>(now - start);
 
-    millisleep(50);
+//    millisleep(50);
 
     lEptStat = getNode("csr.stat.ep_stat").read();
     lEptRdy = getNode("csr.stat.ep_rdy").read();
