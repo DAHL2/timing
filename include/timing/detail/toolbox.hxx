@@ -450,6 +450,14 @@ short_vec_fmt(const std::vector<T>& vec)
   return oss.str();
 }
 //-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+template <typename E>
+constexpr auto to_underlying(E e) noexcept
+{
+    return static_cast<std::underlying_type_t<E>>(e);
+}
+//-----------------------------------------------------------------------------
 } // namespace dunedaq::timing
 
 #endif // TIMING_INCLUDE_TIMING_TOOLBOX_HXX_

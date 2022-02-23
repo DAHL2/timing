@@ -44,7 +44,7 @@ CRTNode::enable(uint32_t partition, FixedLengthCommandType command) const // NOL
 {
 
   getNode("csr.ctrl.tgrp").write(partition);
-  getNode("pulse.ctrl.cmd").write(command);
+  getNode("pulse.ctrl.cmd").write(to_underlying(command));
   getNode("pulse.ctrl.en").write(0x1);
   getClient().dispatch();
 }

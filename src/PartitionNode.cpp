@@ -343,8 +343,8 @@ PartitionNode::get_info(opmonlib::InfoCollector& ic, int /*level*/) const
     timingfirmwareinfo::TimingFLCmdCounter cmd_counter;
     opmonlib::InfoCollector cmd_counter_ic;
 
-    cmd_counter.accepted = accepted_counters.at(cmd.first);
-    cmd_counter.rejected = rejected_counters.at(cmd.first);
+    cmd_counter.accepted = accepted_counters.at(to_underlying(cmd.first));
+    cmd_counter.rejected = rejected_counters.at(to_underlying(cmd.first));
 
     cmd_counter_ic.add(cmd_counter);
     ic.add(cmd.second, cmd_counter_ic);

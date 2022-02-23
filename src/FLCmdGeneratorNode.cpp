@@ -51,7 +51,7 @@ FLCmdGeneratorNode::send_fl_cmd(FixedLengthCommandType command,
 
   reset_sub_nodes(getNode("chan_ctrl"));
 
-  getNode("chan_ctrl.type").write(command);
+  getNode("chan_ctrl.type").write(to_underlying(command));
   getNode("chan_ctrl.force").write(0x1);
   auto timestamp = timestamp_gen_node.read_raw_timestamp(false);
 
@@ -59,7 +59,7 @@ FLCmdGeneratorNode::send_fl_cmd(FixedLengthCommandType command,
 
   getNode("chan_ctrl.force").write(0x0);
   getClient().dispatch();
-  TLOG() << "Command sent " << g_command_map.at(command) << "(" << format_reg_value(command) << ") from generator "
+  TLOG() << "Command sent " << g_command_map.at(command) << "(" << format_reg_value(to_underlying(command)) << ") from generator "
          << format_reg_value(channel) << " @time " << std::hex << std::showbase << tstamp2int(timestamp);
 }
 //-----------------------------------------------------------------------------

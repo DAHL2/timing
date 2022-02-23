@@ -112,7 +112,7 @@ EndpointNode::get_status(bool print_out) const
   std::vector<std::pair<std::string, std::string>> ept_command_counters;
 
   for (auto& cmd:  g_command_map) { // NOLINT(build/unsigned)
-    ept_command_counters.push_back(std::make_pair(cmd.second, std::to_string(ept_counters[cmd.first])));
+    ept_command_counters.push_back(std::make_pair(cmd.second, std::to_string(ept_counters[to_underlying(cmd.first)])));
   }
 
   status << format_reg_table(ept_summary, "Endpoint summary", { "", "" }) << std::endl;
@@ -263,7 +263,7 @@ EndpointNode::get_info(opmonlib::InfoCollector& ci, int /*level*/) const
   getClient().dispatch();
   
   for (auto& cmd:  g_command_map) {
-    cmd_data[cmd.second] = counters.at(cmd.first);
+    cmd_data[cmd.second] = counters.at(to_underlying(cmd.first));
   }
   timingendpointinfo::from_json(cmd_data, received_fl_commands_counters);
   ci.add(received_fl_commands_counters);
