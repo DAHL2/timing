@@ -12,8 +12,8 @@
 #define TIMING_INCLUDE_TIMING_DEFINITIONS_HPP_
 
 #include "TimingIssues.hpp"
+
 #include "timing/definitions/Structs.hpp"
-#include "timing/definitions/Nljs.hpp"
 
 #include "logging/Logging.hpp"
 
