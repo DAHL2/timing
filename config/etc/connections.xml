@@ -63,6 +63,6 @@
   <connection id="CHRONOS_FMC"          uri="ipbusudp-2.0://192.168.200.16:50001" address_table="file://${TIMING_SHARE}/config/etc/addrtab/v610/chronos_fmc/top.xml" />
   <connection id="CHRONOS_FMC_WR"       uri="ipbusudp-2.0://10.11.34.118:50001" address_table="file://${TIMING_SHARE}/config/etc/addrtab/v610/boreas_fmc/top_fmc.xml" />
   <connection id="CHRONOS_FMC_WR_CH"    uri="chtcp-2.0://np04-srv-012.cern.ch:10203?target=10.11.34.118:50001" address_table="file://${TIMING_SHARE}/config/etc/addrtab/v610/boreas_fmc/top_fmc.xml" />
-
+  <connection id="NP02_HSI"             uri="chtcp-2.0://np04-srv-012.cern.ch:10203?target=10.73.24.61:50001" address_table="file://${TIMING_SHARE}/config/etc/addrtab/v610/chronos_fmc/top.xml" />
 </connections>
     
