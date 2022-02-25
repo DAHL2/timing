@@ -7,6 +7,7 @@
  */
 
 #include "timing/VLCmdGeneratorNode.hpp"
+#include "timing/toolbox.hpp"
 
 #include "logging/Logging.hpp"
 

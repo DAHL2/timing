@@ -7,6 +7,7 @@
  */
 
 #include "timing/definitions.hpp"
+#include "timing/definitions/Structs.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -19,15 +20,27 @@ namespace py = pybind11;
 
 namespace dunedaq {
 namespace timing {
+
+typedef definitions::FixedLengthCommandType FixedLengthCommandType;
+
 namespace python {
 
-std::map<std::string, FixedLengthCommandType> swap_commands_map(const std::map<FixedLengthCommandType, std::string>& command_map)
+std::map<std::string, FixedLengthCommandType> make_commands_id_map()
 {
-	std::map<std::string, FixedLengthCommandType> swapped_map;
-	for (auto& cmd: command_map) {
-		swapped_map.emplace( std::pair<std::string,FixedLengthCommandType>(cmd.second, cmd.first) );
+	std::map<std::string, FixedLengthCommandType> map;
+    for (uint i=0; i < g_command_number; ++i) { // NOLINT(build/unsigned)
+	   map.emplace( std::pair<std::string,FixedLengthCommandType>( str(static_cast<FixedLengthCommandType>(i)), static_cast<FixedLengthCommandType>(i) ) );
 	}
-	return swapped_map;
+	return map;
+}
+
+std::map<FixedLengthCommandType, std::string> make_commands_name_map()
+{
+    std::map<FixedLengthCommandType,std::string> map;
+    for (uint i=0; i < g_command_number; ++i) { // NOLINT(build/unsigned)
+        map.emplace( std::pair<FixedLengthCommandType,std::string>( static_cast<FixedLengthCommandType>(i), str(static_cast<FixedLengthCommandType>(i)) ) );
+    }
+    return map;
 }
 
 void
@@ -102,8 +115,8 @@ register_definitions(py::module& m)
 	m.attr("kBoardRevisionMap") = timing::g_board_revision_map;
 	m.attr("kUIDRevisionMap") = timing::g_board_uid_revision_map;
 	m.attr("kClockConfigMap") = timing::g_clock_config_map;
-	m.attr("kCommandNames") = timing::g_command_map;
-	m.attr("kCommandIDs") = swap_commands_map(timing::g_command_map);
+	m.attr("kCommandNames") = make_commands_name_map();
+	m.attr("kCommandIDs") = make_commands_id_map();
 	m.attr("kEpStates") = timing::g_endpoint_state_map;
 	m.attr("kLibrarySupportedBoards") = timing::g_library_supported_boards;
     m.attr("kLibrarySupportedDesigns") = timing::g_library_supported_designs;

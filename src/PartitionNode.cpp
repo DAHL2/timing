@@ -7,6 +7,8 @@
  */
 
 #include "timing/PartitionNode.hpp"
+#include "timing/toolbox.hpp"
+#include "timing/definitions/Structs.hpp"
 
 #include "logging/Logging.hpp"
 
@@ -339,17 +341,16 @@ PartitionNode::get_info(opmonlib::InfoCollector& ic, int /*level*/) const
   getClient().dispatch();
 
 
-  for (auto& cmd: g_command_map) {
+  for (uint i=0; i < g_command_number; ++i) { // NOLINT(build/unsigned)
     timingfirmwareinfo::TimingFLCmdCounter cmd_counter;
     opmonlib::InfoCollector cmd_counter_ic;
 
-    cmd_counter.accepted = accepted_counters.at(to_underlying(cmd.first));
-    cmd_counter.rejected = rejected_counters.at(to_underlying(cmd.first));
+    cmd_counter.accepted = accepted_counters.at(i);
+    cmd_counter.rejected = rejected_counters.at(i);
 
     cmd_counter_ic.add(cmd_counter);
-    ic.add(cmd.second, cmd_counter_ic);
+    ic.add(str(static_cast<definitions::FixedLengthCommandType>(i)), cmd_counter_ic);
   }
-
 }
 //-----------------------------------------------------------------------------
 

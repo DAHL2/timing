@@ -12,9 +12,6 @@
 #define TIMING_INCLUDE_TIMING_DEFINITIONS_HPP_
 
 #include "TimingIssues.hpp"
-
-#include "timing/definitions/Structs.hpp"
-
 #include "logging/Logging.hpp"
 
 #include <cmath>
@@ -25,8 +22,6 @@
 
 namespace dunedaq {
 namespace timing {
-
-typedef definitions::FixedLengthCommandType FixedLengthCommandType;
 
 typedef std::map<std::string, uint32_t> Snapshot; // NOLINT(build/unsigned)
 
@@ -286,25 +281,25 @@ const std::map<std::string, std::string> g_clock_config_map = {
 };
 
 // NOLINTNEXTLINE(build/unsigned)
-const std::map<FixedLengthCommandType, std::string> g_command_map = {
-  { FixedLengthCommandType::TimeSync, "TimeSync" }, 
-  { FixedLengthCommandType::Echo, "Echo" }, 
-  { FixedLengthCommandType::SpillStart, "SpillStart" }, 
-  { FixedLengthCommandType::SpillStop, "SpillStop" }, 
-  { FixedLengthCommandType::RunStart, "RunStart" },
-  { FixedLengthCommandType::RunStop, "RunStop" }, 
-  { FixedLengthCommandType::WibCalib, "WibCalib" }, 
-  { FixedLengthCommandType::SSPCalib, "SSPCalib" }, 
-  { FixedLengthCommandType::FakeTrig0, "FakeTrig0" }, 
-  { FixedLengthCommandType::FakeTrig1, "FakeTrig1" },
-  { FixedLengthCommandType::FakeTrig2, "FakeTrig2" }, 
-  { FixedLengthCommandType::FakeTrig3, "FakeTrig3" }, 
-  { FixedLengthCommandType::BeamTrig, "BeamTrig" }, 
-  { FixedLengthCommandType::NoBeamTrig, "NoBeamTrig" }, 
-  { FixedLengthCommandType::ExtFakeTrig, "ExtFakeTrig" }
-};
+//const std::map<FixedLengthCommandType, std::string> g_command_map = {
+//  { FixedLengthCommandType::TimeSync, "TimeSync" }, 
+//  { FixedLengthCommandType::Echo, "Echo" }, 
+//  { FixedLengthCommandType::SpillStart, "SpillStart" }, 
+//  { FixedLengthCommandType::SpillStop, "SpillStop" }, 
+//  { FixedLengthCommandType::RunStart, "RunStart" },
+//  { FixedLengthCommandType::RunStop, "RunStop" }, 
+//  { FixedLengthCommandType::WibCalib, "WibCalib" }, 
+//  { FixedLengthCommandType::SSPCalib, "SSPCalib" }, 
+//  { FixedLengthCommandType::FakeTrig0, "FakeTrig0" }, 
+//  { FixedLengthCommandType::FakeTrig1, "FakeTrig1" },
+//  { FixedLengthCommandType::FakeTrig2, "FakeTrig2" }, 
+//  { FixedLengthCommandType::FakeTrig3, "FakeTrig3" }, 
+//  { FixedLengthCommandType::BeamTrig, "BeamTrig" }, 
+//  { FixedLengthCommandType::NoBeamTrig, "NoBeamTrig" }, 
+//  { FixedLengthCommandType::ExtFakeTrig, "ExtFakeTrig" }
+//};
 
-const uint32_t g_command_number = g_command_map.size(); // NOLINT(build/unsigned)
+const uint32_t g_command_number = 16; // NOLINT(build/unsigned)
 
 // NOLINTNEXTLINE(build/unsigned)
 const std::map<uint32_t, std::string> g_endpoint_state_map = {

@@ -15,6 +15,7 @@
 #include "TimingIssues.hpp"
 #include "timing/TimingNode.hpp"
 #include "timing/EndpointNodeInterface.hpp"
+#include "timing/definitions/Structs.hpp"
 
 // uHal Headers
 #include "uhal/DerivedNode.hpp"
@@ -25,6 +26,8 @@
 
 namespace dunedaq {
 namespace timing {
+
+typedef definitions::FixedLengthCommandType FixedLengthCommandType;
 
 /**
  * @brief      Base class for timing IO nodes.

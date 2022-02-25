@@ -7,6 +7,7 @@
  */
 
 #include "timing/EndpointNode.hpp"
+#include "timing/toolbox.hpp"
 
 #include "logging/Logging.hpp"
 
@@ -111,8 +112,8 @@ EndpointNode::get_status(bool print_out) const
 
   std::vector<std::pair<std::string, std::string>> ept_command_counters;
 
-  for (auto& cmd:  g_command_map) { // NOLINT(build/unsigned)
-    ept_command_counters.push_back(std::make_pair(cmd.second, std::to_string(ept_counters[to_underlying(cmd.first)])));
+  for (uint i=0; i < g_command_number; ++i) { // NOLINT(build/unsigned)
+    ept_command_counters.push_back(std::make_pair(str(static_cast<definitions::FixedLengthCommandType>(i)), std::to_string(ept_counters[i])));
   }
 
   status << format_reg_table(ept_summary, "Endpoint summary", { "", "" }) << std::endl;
@@ -261,9 +262,9 @@ EndpointNode::get_info(opmonlib::InfoCollector& ci, int /*level*/) const
   
   auto counters = getNode("ctrs").readBlock(g_command_number);
   getClient().dispatch();
-  
-  for (auto& cmd:  g_command_map) {
-    cmd_data[cmd.second] = counters.at(to_underlying(cmd.first));
+
+  for (uint i=0; i < g_command_number; ++i) { // NOLINT(build/unsigned)
+    cmd_data[str(static_cast<definitions::FixedLengthCommandType>(i))] = counters.at(i);
   }
   timingendpointinfo::from_json(cmd_data, received_fl_commands_counters);
   ci.add(received_fl_commands_counters);

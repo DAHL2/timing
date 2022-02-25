@@ -18,6 +18,7 @@
 #include "timing/TimingNode.hpp"
 #include "timing/timingfirmwareinfo/InfoStructs.hpp"
 #include "timing/timingfirmwareinfo/InfoNljs.hpp"
+#include "timing/definitions/Structs.hpp"
 
 // uHal Headers
 #include "uhal/DerivedNode.hpp"
@@ -27,6 +28,8 @@
 
 namespace dunedaq {
 namespace timing {
+
+typedef definitions::FixedLengthCommandType FixedLengthCommandType;
 
 /**
  * @brief      Class for master global node.

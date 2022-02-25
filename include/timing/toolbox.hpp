@@ -14,6 +14,7 @@
 #include "definitions.hpp"
 
 #include "TimingIssues.hpp"
+#include "timing/definitions/Structs.hpp"
 
 #include "ers/Issue.hpp"
 #include "logging/Logging.hpp"

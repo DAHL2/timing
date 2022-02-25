@@ -244,8 +244,8 @@ format_counters_table(std::vector<T> counter_nodes,
   if (counter_labels.size()) {
     counter_labels_to_use = counter_labels;
   } else {
-    for (auto it = g_command_map.begin(); it != g_command_map.end(); ++it)
-      counter_labels_to_use.push_back(it->second);
+    for (uint i = 0; i < g_command_number; ++i)
+      counter_labels_to_use.push_back(str(static_cast<definitions::FixedLengthCommandType>(i)));
   }
   counter_number = counter_labels_to_use.size();
 

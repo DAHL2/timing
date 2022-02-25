@@ -14,6 +14,7 @@
 
 // PDT Headers
 #include "timing/TimingNode.hpp"
+#include "timing/toolbox.hpp"
 
 // uHal Headers
 #include "uhal/DerivedNode.hpp"

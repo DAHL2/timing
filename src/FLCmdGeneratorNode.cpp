@@ -7,6 +7,7 @@
  */
 
 #include "timing/FLCmdGeneratorNode.hpp"
+#include "timing/toolbox.hpp"
 
 #include "logging/Logging.hpp"
 
@@ -59,7 +60,7 @@ FLCmdGeneratorNode::send_fl_cmd(FixedLengthCommandType command,
 
   getNode("chan_ctrl.force").write(0x0);
   getClient().dispatch();
-  TLOG() << "Command sent " << g_command_map.at(command) << "(" << format_reg_value(to_underlying(command)) << ") from generator "
+  TLOG() << "Command sent " << str(command) << "(" << format_reg_value(to_underlying(command)) << ") from generator "
          << format_reg_value(channel) << " @time " << std::hex << std::showbase << tstamp2int(timestamp);
 }
 //-----------------------------------------------------------------------------

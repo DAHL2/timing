@@ -10,6 +10,7 @@
 
 // PDT Headers
 #include "timing/TimingIssues.hpp"
+#include "timing/definitions/Structs.hpp"
 
 // uHAL Headers
 #include "uhal/ValMem.hpp"
