@@ -70,8 +70,8 @@ public:
   uint64_t read_last_pulse_timestamp() const; // NOLINT(build/unsigned)
 
 private:
-  void enable(uint32_t partition = 0, uint32_t address = 0) const override; // NOLINT(build/unsigned)
-  void reset(uint32_t partition = 0, uint32_t address = 0) const override; // NOLINT(build/unsigned)
+  void enable(uint32_t address = 0, uint32_t partition = 0) const override; // NOLINT(build/unsigned)
+  void reset(uint32_t address = 0, uint32_t partition = 0) const override; // NOLINT(build/unsigned)
 };
 
 } // namespace timing

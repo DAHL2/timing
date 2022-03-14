@@ -31,7 +31,7 @@ HSINode::~HSINode() {}
 
 //-----------------------------------------------------------------------------
 void
-HSINode::enable(uint32_t partition, uint32_t address) const // NOLINT(build/unsigned)
+HSINode::enable(uint32_t address, uint32_t partition) const // NOLINT(build/unsigned)
 {
   getNode("csr.ctrl.tgrp").write(partition);
   getNode("csr.ctrl.addr").write(address);
@@ -51,10 +51,10 @@ HSINode::disable() const
 
 //-----------------------------------------------------------------------------
 void
-HSINode::reset(uint32_t partition, uint32_t address) const // NOLINT(build/unsigned)
+HSINode::reset(uint32_t address, uint32_t partition) const // NOLINT(build/unsigned)
 {
   getNode("csr.ctrl.ep_en").write(0x0);
-  enable(partition, address);
+  enable(address, partition);
 }
 //-----------------------------------------------------------------------------
 

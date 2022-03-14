@@ -86,9 +86,9 @@ def enable(ctx, obj, action, partition, address):
     if action == 'off':
         lHSIEpt.disable()
     elif action == 'on':
-        lHSIEpt.enable(partition, address)
+        lHSIEpt.enable(address=address,partition=partition)
     elif action == 'reset':
-        lHSIEpt.reset(partition, address)
+        lHSIEpt.reset(address=address,partition=partition)
         lHSIEpt.reset_hsi()
 
     time.sleep(0.1)

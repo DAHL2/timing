@@ -30,7 +30,7 @@ CRTNode::~CRTNode() {}
 
 //-----------------------------------------------------------------------------
 void
-CRTNode::enable(uint32_t partition, uint32_t /*address*/) const // NOLINT(build/unsigned)
+CRTNode::enable(uint32_t /*address*/, uint32_t partition) const // NOLINT(build/unsigned)
 {
   getNode("csr.ctrl.tgrp").write(partition);
   getNode("pulse.ctrl.en").write(0x1);
@@ -61,10 +61,10 @@ CRTNode::disable() const
 
 //-----------------------------------------------------------------------------
 void
-CRTNode::reset(uint32_t partition, uint32_t address) const // NOLINT(build/unsigned)
+CRTNode::reset(uint32_t address, uint32_t partition) const // NOLINT(build/unsigned)
 {
   getNode("pulse.ctrl.en").write(0x0);
-  enable(partition, address);
+  enable(address, partition);
   getClient().dispatch();
 }
 //-----------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 /**
- * @file EndpointNode.hpp
+ * @file DUNEEndpointNode.hpp
  *
- * EndpointNode is a class providing an interface
+ * DUNEEndpointNode is a class providing an interface
  * to the endpoint wrapper firmware block.
  *
  * This is part of the DUNE DAQ Software Suite, copyright 2020.
@@ -35,12 +35,12 @@ namespace timing {
 /**
  * @brief      Base class for timing IO nodes.
  */
-class EndpointNode : public EndpointNodeInterface
+class DUNEEndpointNode : public EndpointNodeInterface
 {
-  UHAL_DERIVEDNODE(EndpointNode)
+  UHAL_DERIVEDNODE(DUNEEndpointNode)
 public:
-  explicit EndpointNode(const uhal::Node& node);
-  virtual ~EndpointNode();
+  explicit DUNEEndpointNode(const uhal::Node& node);
+  virtual ~DUNEEndpointNode();
 
   /**
    * @brief     Print the status of the timing node.
@@ -53,7 +53,7 @@ public:
    * @return     { description_of_the_return_value }
    */
   void enable(uint32_t address = 0, uint32_t partition = 0) const override; // NOLINT(build/unsigned)
-
+  
   /**
    * @brief      Disable the endpoint
    *

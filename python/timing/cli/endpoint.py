@@ -112,9 +112,9 @@ def enable(ctx, obj, action, partition, address):
         if action == 'off':
             ep.disable()
         elif action == 'on':
-            ep.enable(partition, address)
+            ep.enable(address=address,partition=partition)
         elif action == 'reset':
-            ep.reset(partition, address)
+            ep.reset(address=address,partition=partition)
         lDone.append(i)
 
     time.sleep(0.1)
