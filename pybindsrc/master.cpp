@@ -43,13 +43,13 @@ register_master(py::module& m)
          py::arg("command"),
          py::arg("channel"),
          py::arg("number_of_commands") = 1)
-    .def("enable_fake_trigger",
-         &timing::PDIMasterNode::enable_fake_trigger,
+    .def("enable_periodic_fl_cmd",
+         &timing::PDIMasterNode::enable_periodic_fl_cmd,
          py::arg("channel"),
          py::arg("rate"),
          py::arg("poisson"),
          py::arg("clock_frequency_hz"))
-    .def("disable_fake_trigger", &timing::PDIMasterNode::disable_fake_trigger)
+    .def("disable_periodic_fl_cmd", &timing::PDIMasterNode::disable_periodic_fl_cmd)
     .def("enable_spill_interface", &timing::PDIMasterNode::enable_spill_interface)
     .def("enable_fake_spills",
          &timing::PDIMasterNode::enable_fake_spills,

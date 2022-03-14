@@ -33,10 +33,9 @@ namespace timing {
 /**
  * @brief      Class for timing fanout designs.
  */
-template<class MST>
-class FanoutDesign : public MasterMuxDesign<MST>, public PlainEndpointDesignInterface
+class FanoutDesign : public MasterMuxDesign, public PlainEndpointDesignInterface
 {
-
+  UHAL_DERIVEDNODE(FanoutDesign)
 public:
   explicit FanoutDesign(const uhal::Node& node);
   virtual ~FanoutDesign();
@@ -86,16 +85,9 @@ public:
                             bool measure_rtt,
                             bool control_sfp,
                             int sfp_mux) const override;
-
-  // In leiu of UHAL_DERIVEDNODE
-protected:
-  virtual uhal::Node* clone() const;
-  //
 };
 
 } // namespace timing
 } // namespace dunedaq
-
-#include "timing/detail/FanoutDesign.hxx"
 
 #endif // TIMING_INCLUDE_TIMING_FANOUTDESIGN_HPP_

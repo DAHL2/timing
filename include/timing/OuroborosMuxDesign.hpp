@@ -15,7 +15,6 @@
 // PDT Headers
 #include "timing/MasterMuxDesign.hpp"
 #include "timing/EndpointDesignInterface.hpp"
-#include "timing/PDIMasterNode.hpp"
 
 // uHal Headers
 #include "uhal/DerivedNode.hpp"
@@ -32,7 +31,7 @@ namespace timing {
  * @brief      Class for PDI ouroboros timing master design 
  */
 class OuroborosMuxDesign
-  : public MasterMuxDesign<PDIMasterNode>, public PlainEndpointDesignInterface
+  : public MasterMuxDesign, public PlainEndpointDesignInterface
 {
   UHAL_DERIVEDNODE(OuroborosMuxDesign)
 public:

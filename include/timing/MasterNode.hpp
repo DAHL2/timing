@@ -16,8 +16,6 @@
 #include "TimingIssues.hpp"
 #include "timing/EchoMonitorNode.hpp"
 #include "timing/FLCmdGeneratorNode.hpp"
-#include "timing/GlobalNode.hpp"
-#include "timing/PartitionNode.hpp"
 #include "timing/TimestampGeneratorNode.hpp"
 #include "timing/TimingNode.hpp"
 #include "timing/VLCmdGeneratorNode.hpp"
@@ -45,12 +43,17 @@ public:
    *
    * @return     { description_of_the_return_value }
    */
-  virtual uint64_t read_timestamp() const; // NOLINT(build/unsigned)
+  virtual uint64_t read_timestamp() const = 0; // NOLINT(build/unsigned)
 
   /**
    * @brief      Set the timestamp to current time.
    */
-  virtual void set_timestamp(uint64_t timestamp) const; // NOLINT(build/unsigned)
+  virtual void set_timestamp(uint64_t timestamp) const = 0; // NOLINT(build/unsigned)
+
+  /**
+   * @brief     Set timestamp to current machine time
+   */
+  virtual void sync_timestamp(uint32_t clock_frequency_hz) const = 0; // NOLINT(build/unsigned)
 
   /**
    * @brief     Control the tx line of endpoint sfp
@@ -88,15 +91,18 @@ public:
    * @brief     Send a fixed length command
    */
   virtual void send_fl_cmd(FixedLengthCommandType command,
-                           uint32_t channel,                           // NOLINT(build/unsigned)
-                           uint32_t number_of_commands = 1) const = 0; // NOLINT(build/unsigned)
+                           uint32_t channel,                        // NOLINT(build/unsigned)
+                           uint32_t number_of_commands = 1) const ; // NOLINT(build/unsigned)
 
   /**
-   * @brief      Get partition node
-   *
-   * @return     { description_of_the_return_value }
+   * @brief     Configure fake trigger generator
    */
-  virtual const PartitionNode& get_partition_node(uint32_t partition_id) const; // NOLINT(build/unsigned)
+  virtual void enable_periodic_fl_cmd(uint32_t channel, double rate, bool poisson, uint32_t clock_frequency_hz) const; // NOLINT(build/unsigned)
+
+  /**
+   * @brief     Clear fake trigger configuration
+   */
+  virtual void disable_periodic_fl_cmd(uint32_t channel) const; // NOLINT(build/unsigned)
 };
 
 } // namespace timing

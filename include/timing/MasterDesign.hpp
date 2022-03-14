@@ -30,20 +30,12 @@ namespace timing {
 /**
  * @brief      Base class for timing master designs.
  */
-template<class MST>
 class MasterDesign : public TopDesign, virtual public MasterDesignInterface
 {
 
 public:
   explicit MasterDesign(const uhal::Node& node);
   virtual ~MasterDesign();
-
-  /**
-   * @brief      Get the timing master node.
-   *
-   * @return     { description_of_the_return_value }
-   */
-  virtual const MST& get_master_node() const;
 
   /**
    * @brief     Get status string, optionally print.
@@ -87,30 +79,15 @@ public:
                                     bool measure_rtt = false,
                                     bool control_sfp = true,
                                     int sfp_mux = -1) const override;
-
-  /**
-   * @brief     Send a fixed length command
-   */
-  void send_fl_cmd(FixedLengthCommandType command,
-                   uint32_t channel,                       // NOLINT(build/unsigned)
-                   uint32_t number_of_commands = 1) const override; // NOLINT(build/unsigned)
-
   /**
    * @brief     Configure fake trigger generator
    */
-  void enable_fake_trigger(uint32_t channel, double rate, bool poisson = false) const override; // NOLINT(build/unsigned)
+  void enable_periodic_fl_cmd(uint32_t channel, double rate, bool poisson = false) const override; // NOLINT(build/unsigned)
 
   /**
    * @brief      Get master node pointer
    */
   const MasterNode* get_master_node_plain() const override { return dynamic_cast<const MasterNode*>(&uhal::Node::getNode("master")); }
-
-  /**
-   * @brief      Get partition node
-   *
-   * @return     { description_of_the_return_value }
-   */
-  const PartitionNode& get_partition_node(uint32_t partition_id) const override { return get_master_node().get_partition_node(partition_id); } // NOLINT(build/unsigned)
 
   /**
    * @brief      Read master firmware version.
@@ -133,7 +110,5 @@ public:
 
 } // namespace timing
 } // namespace dunedaq
-
-#include "timing/detail/MasterDesign.hxx"
 
 #endif // TIMING_INCLUDE_TIMING_MASTERDESIGN_HPP_

@@ -36,8 +36,8 @@ register_top_designs(py::module& m)
     .def("validate_firmware_version", &timing::OverlordDesign::validate_firmware_version)
     .def("sync_timestamp", &timing::OverlordDesign::sync_timestamp)
     .def("get_status", &timing::OverlordDesign::get_status)
-    .def("enable_fake_trigger",
-         &timing::OverlordDesign::enable_fake_trigger,
+    .def("enable_periodic_fl_cmd",
+         &timing::OverlordDesign::enable_periodic_fl_cmd,
          py::arg("channel"),
          py::arg("rate"),
          py::arg("poisson"))
@@ -65,8 +65,8 @@ register_top_designs(py::module& m)
     .def("validate_firmware_version", &timing::BoreasDesign::validate_firmware_version)
     .def("sync_timestamp", &timing::BoreasDesign::sync_timestamp)
     .def("get_status", &timing::BoreasDesign::get_status)
-    .def("enable_fake_trigger",
-         &timing::BoreasDesign::enable_fake_trigger,
+    .def("enable_periodic_fl_cmd",
+         &timing::BoreasDesign::enable_periodic_fl_cmd,
          py::arg("channel"),
          py::arg("rate"),
          py::arg("poisson"))
@@ -95,18 +95,18 @@ register_top_designs(py::module& m)
          py::arg("dispatch") = true);
 
   // PD-I fanout design on fib
-  py::class_<timing::FanoutDesign<PDIMasterNode>, uhal::Node>(m, "FanoutDesign<PDIMasterNode>")
-    .def("read_firmware_version", &timing::FanoutDesign<PDIMasterNode>::read_firmware_version)
-    .def("validate_firmware_version", &timing::FanoutDesign<PDIMasterNode>::validate_firmware_version)
-    .def("sync_timestamp", &timing::FanoutDesign<PDIMasterNode>::sync_timestamp)
-    .def("enable_fake_trigger",
-         &timing::FanoutDesign<PDIMasterNode>::enable_fake_trigger,
+  py::class_<timing::FanoutDesign, uhal::Node>(m, "FanoutDesign")
+    .def("read_firmware_version", &timing::FanoutDesign::read_firmware_version)
+    .def("validate_firmware_version", &timing::FanoutDesign::validate_firmware_version)
+    .def("sync_timestamp", &timing::FanoutDesign::sync_timestamp)
+    .def("enable_periodic_fl_cmd",
+         &timing::FanoutDesign::enable_periodic_fl_cmd,
          py::arg("channel"),
          py::arg("rate"),
          py::arg("poisson"))
-    .def("switch_sfp_mux_channel", &timing::FanoutDesign<PDIMasterNode>::switch_sfp_mux_channel)
+    .def("switch_sfp_mux_channel", &timing::FanoutDesign::switch_sfp_mux_channel)
     .def("apply_endpoint_delay", 
-          &timing::FanoutDesign<PDIMasterNode>::apply_endpoint_delay,
+          &timing::FanoutDesign::apply_endpoint_delay,
           py::arg("address"),
           py::arg("coarse_delay"),
           py::arg("fine_delay"),
@@ -115,11 +115,11 @@ register_top_designs(py::module& m)
           py::arg("control_sfp") = true,
           py::arg("sfp_mux") = -1)
     .def("measure_endpoint_rtt", 
-          &timing::FanoutDesign<PDIMasterNode>::measure_endpoint_rtt,
+          &timing::FanoutDesign::measure_endpoint_rtt,
           py::arg("address"),
           py::arg("control_sfp") = true,
           py::arg("sfp_mux") = -1)
-    .def("scan_sfp_mux", &timing::FanoutDesign<PDIMasterNode>::scan_sfp_mux);
+    .def("scan_sfp_mux", &timing::FanoutDesign::scan_sfp_mux);
 
   // PD-I ouroboros design on fib
   py::class_<timing::OuroborosMuxDesign, uhal::Node>(
@@ -127,8 +127,8 @@ register_top_designs(py::module& m)
     .def("read_firmware_version", &timing::OuroborosMuxDesign::read_firmware_version)
     .def("validate_firmware_version", &timing::OuroborosMuxDesign::validate_firmware_version)
     .def("sync_timestamp", &timing::OuroborosMuxDesign::sync_timestamp)
-    .def("enable_fake_trigger",
-         &timing::OuroborosMuxDesign::enable_fake_trigger,
+    .def("enable_periodic_fl_cmd",
+         &timing::OuroborosMuxDesign::enable_periodic_fl_cmd,
          py::arg("channel"),
          py::arg("rate"),
          py::arg("poisson"))
@@ -155,8 +155,8 @@ register_top_designs(py::module& m)
     .def("validate_firmware_version", &timing::OuroborosDesign::validate_firmware_version)
     .def("sync_timestamp", &timing::OuroborosDesign::sync_timestamp)
     .def("get_status", &timing::OuroborosDesign::get_status)
-    .def("enable_fake_trigger",
-         &timing::OuroborosDesign::enable_fake_trigger,
+    .def("enable_periodic_fl_cmd",
+         &timing::OuroborosDesign::enable_periodic_fl_cmd,
          py::arg("channel"),
          py::arg("rate"),
          py::arg("poisson"))

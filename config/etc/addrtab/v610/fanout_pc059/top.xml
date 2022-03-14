@@ -1,4 +1,4 @@
-<node id="TOP" class="FanoutDesign<PDIMasterNode>">
+<node id="TOP" class="FanoutDesign">
     <node id="io" address="0x0" module="file://pdts_pc059_io.xml"/>
     <node id="switch" address="0x100" module="file://switchyard.xml"/>
     <node id="master" address="0x400" module="file://pdts_master.xml"/>

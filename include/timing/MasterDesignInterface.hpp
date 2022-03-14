@@ -70,30 +70,21 @@ public:
                                     bool measure_rtt = false,
                                     bool control_sfp = true,
                                     int sfp_mux = -1) const = 0;
-
-  /**
-   * @brief     Send a fixed length command
-   */
-  virtual void send_fl_cmd(FixedLengthCommandType command,
-                           uint32_t channel,                       // NOLINT(build/unsigned)
-                           uint32_t number_of_commands = 1) const = 0; // NOLINT(build/unsigned)
-
   /**
    * @brief     Configure fake trigger generator
    */
-  virtual void enable_fake_trigger(uint32_t channel, double rate, bool poisson = false) const = 0; // NOLINT(build/unsigned)
+  virtual void enable_periodic_fl_cmd(uint32_t channel, double rate, bool poisson = false) const = 0; // NOLINT(build/unsigned)
 
   /**
    * @brief      Get master node pointer
    */
   virtual const MasterNode* get_master_node_plain() const = 0;
 
-  /**
-   * @brief      Get partition node
-   *
-   * @return     { description_of_the_return_value }
-   */
-  virtual const PartitionNode& get_partition_node(uint32_t partition_id) const = 0; // NOLINT(build/unsigned)
+  template<class MST>
+  const MST* get_master_node() const
+  { 
+    return dynamic_cast<const MST*>(get_master_node_plain()); 
+  }
 
 };
 

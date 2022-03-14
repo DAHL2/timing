@@ -20,7 +20,7 @@ OuroborosDesign::OuroborosDesign(const uhal::Node& node)
   : TopDesignInterface(node)
   , MasterDesignInterface(node)
   , EndpointDesignInterface(node)
-  , MasterDesign<PDIMasterNode>(node)
+  , MasterDesign(node)
   , PlainEndpointDesignInterface(node)
 {}
 //-----------------------------------------------------------------------------
@@ -36,7 +36,7 @@ OuroborosDesign::get_status(bool print_out) const
 {
   std::stringstream status;
   status << get_io_node_plain()->get_pll_status();
-  status << MasterDesign<PDIMasterNode>::get_master_node().get_status();
+  status << get_master_node_plain()->get_status();
   status << this->get_endpoint_node(0).get_status();
   if (print_out)
     TLOG() << status.str();
@@ -54,9 +54,6 @@ OuroborosDesign::configure() const
 
   // Set timestamp to current time
   this->sync_timestamp();
-
-  // Enable spill interface
-  MasterDesign<PDIMasterNode>::get_master_node().enable_spill_interface();
 }
 //-----------------------------------------------------------------------------
 
@@ -65,7 +62,7 @@ void
 OuroborosDesign::get_info(opmonlib::InfoCollector& ci, int level) const
 { 
   opmonlib::InfoCollector master_collector;
-  this->get_master_node().get_info(master_collector, level);
+  this->get_master_node_plain()->get_info(master_collector, level);
   ci.add("master", master_collector);
 
   opmonlib::InfoCollector hardware_collector;

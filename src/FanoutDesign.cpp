@@ -1,44 +1,35 @@
+#include "timing/FanoutDesign.hpp"
+
 #include <sstream>
 #include <string>
 
 namespace dunedaq::timing {
 
-// In leiu of UHAL_REGISTER_DERIVED_NODE
-//-----------------------------------------------------------------------------
-template<class MST>
-uhal::Node*
-FanoutDesign<MST>::clone() const
-{
-  return new FanoutDesign<MST>(static_cast<const FanoutDesign<MST>&>(*this));
-}
-//-----------------------------------------------------------------------------
+UHAL_REGISTER_DERIVED_NODE(FanoutDesign)
 
 //-----------------------------------------------------------------------------
-template<class MST>
-FanoutDesign<MST>::FanoutDesign(const uhal::Node& node)
+FanoutDesign::FanoutDesign(const uhal::Node& node)
   : TopDesignInterface(node)
   , MuxDesignInterface(node)
   , MasterDesignInterface(node)
   , EndpointDesignInterface(node)
-  , MasterMuxDesign<MST>(node)
+  , MasterMuxDesign(node)
   , PlainEndpointDesignInterface(node)
 {}
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-template<class MST>
-FanoutDesign<MST>::~FanoutDesign()
+FanoutDesign::~FanoutDesign()
 {}
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-template<class MST>
 std::string
-FanoutDesign<MST>::get_status(bool print_out) const
+FanoutDesign::get_status(bool print_out) const
 {
   std::stringstream status;
   status << get_io_node_plain()->get_pll_status();
-  status << MasterDesign<MST>::get_master_node().get_status();
+  status << MasterDesign::get_master_node_plain()->get_status();
   // TODO fanout specific status
   if (print_out)
     TLOG() << status.str();
@@ -47,9 +38,8 @@ FanoutDesign<MST>::get_status(bool print_out) const
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-template<class MST>
 void
-FanoutDesign<MST>::configure() const
+FanoutDesign::configure() const
 {
   // fanout mode hard-coded, to be passed in as parameter in future
   uint32_t fanout_mode = 0;
@@ -60,17 +50,13 @@ FanoutDesign<MST>::configure() const
   if (!fanout_mode) {
     // Set timestamp to current time
     this->sync_timestamp();
-
-    // Enable spill interface
-    MasterDesign<MST>::get_master_node().enable_spill_interface();
   }
 }
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-template<class MST>
 void
-FanoutDesign<MST>::reset_io(int32_t fanout_mode, const std::string& clock_config_file) const
+FanoutDesign::reset_io(int32_t fanout_mode, const std::string& clock_config_file) const
 {
   get_io_node_plain()->reset(fanout_mode, clock_config_file);
   // 0 - fanout mode, outgoing data comes from sfp
@@ -95,16 +81,15 @@ FanoutDesign<MST>::reset_io(int32_t fanout_mode, const std::string& clock_config
 
 ////-----------------------------------------------------------------------------
 // template<class MST>
-// void FanoutDesign<MST>::reset(const std::string& clock_config_file) const {
+// void FanoutDesign::reset(const std::string& clock_config_file) const {
 //	this->reset(0, clock_config_file);
 //}
 ////-----------------------------------------------------------------------------
 
 
 //-----------------------------------------------------------------------------
-template<class MST>
 uint32_t
-FanoutDesign<MST>::measure_endpoint_rtt(uint32_t address, bool control_sfp, int sfp_mux) const
+FanoutDesign::measure_endpoint_rtt(uint32_t address, bool control_sfp, int sfp_mux) const
 {
   auto fanout_mode = uhal::Node::getNode("switch.csr.ctrl.master_src").read();
   uhal::Node::getClient().dispatch();
@@ -115,14 +100,13 @@ FanoutDesign<MST>::measure_endpoint_rtt(uint32_t address, bool control_sfp, int 
          << " is in fanout mode. Measure endpoint RTT should be called from master device.";
     throw UnsupportedFunction(ERS_HERE, message.str());
   }
-  return MasterMuxDesign<MST>::measure_endpoint_rtt(address, control_sfp, sfp_mux);
+  return MasterMuxDesign::measure_endpoint_rtt(address, control_sfp, sfp_mux);
 }
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-template<class MST>
 void
-FanoutDesign<MST>::apply_endpoint_delay(uint32_t address,
+FanoutDesign::apply_endpoint_delay(uint32_t address,
                                             uint32_t coarse_delay,
                                             uint32_t fine_delay,
                                             uint32_t phase_delay,
@@ -139,18 +123,17 @@ FanoutDesign<MST>::apply_endpoint_delay(uint32_t address,
          << " is in fanout mode. Apply endpoint delay should be called from master device.";
     throw UnsupportedFunction(ERS_HERE, message.str());
   }
-  MasterMuxDesign<MST>::apply_endpoint_delay(
+  MasterMuxDesign::apply_endpoint_delay(
     address, coarse_delay, fine_delay, phase_delay, measure_rtt, control_sfp, sfp_mux);
 }
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-template<class MST>
 void
-FanoutDesign<MST>::get_info(opmonlib::InfoCollector& ci, int level) const
+FanoutDesign::get_info(opmonlib::InfoCollector& ci, int level) const
 { 
   opmonlib::InfoCollector master_collector;
-  this->get_master_node().get_info(master_collector, level);
+  this->get_master_node_plain()->get_info(master_collector, level);
   ci.add("master", master_collector);
 
   opmonlib::InfoCollector hardware_collector;

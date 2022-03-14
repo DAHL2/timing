@@ -15,7 +15,6 @@
 // PDT Headers
 #include "timing/EndpointDesignInterface.hpp"
 #include "timing/MasterDesign.hpp"
-#include "timing/PDIMasterNode.hpp"
 
 // uHal Headers
 #include "uhal/DerivedNode.hpp"
@@ -32,7 +31,7 @@ namespace timing {
  * @brief      Class for PDI timing master design (known as overlord).
  */
 class OuroborosDesign
-  : public MasterDesign<PDIMasterNode>, public PlainEndpointDesignInterface
+  : public MasterDesign, public PlainEndpointDesignInterface
 {
   UHAL_DERIVEDNODE(OuroborosDesign)
 public:
