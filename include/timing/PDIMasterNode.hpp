@@ -100,13 +100,6 @@ public:
   using MasterNode::apply_endpoint_delay;
 
   /**
-   * @brief     Send a fixed length command
-   */
-  void send_fl_cmd(FixedLengthCommandType command,
-                   uint32_t channel,                                // NOLINT(build/unsigned)
-                   uint32_t number_of_commands = 1) const override; // NOLINT(build/unsigned)
-
-  /**
    * @brief      Get partition node
    *
    * @return     { description_of_the_return_value }

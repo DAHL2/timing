@@ -43,7 +43,7 @@ PDIMasterNode::get_status(bool print_out) const
 
 //-----------------------------------------------------------------------------
 uint64_t // NOLINT(build/unsigned)
-MasterNode::read_timestamp() const
+PDIMasterNode::read_timestamp() const
 {
   return getNode<TimestampGeneratorNode>("tstamp").read_timestamp();
 }
@@ -51,7 +51,7 @@ MasterNode::read_timestamp() const
 
 //-----------------------------------------------------------------------------
 void
-MasterNode::set_timestamp(uint64_t timestamp) const // NOLINT(build/unsigned)
+PDIMasterNode::set_timestamp(uint64_t timestamp) const // NOLINT(build/unsigned)
 {
   getNode<TimestampGeneratorNode>("tstamp").set_timestamp(timestamp);
 }
@@ -217,7 +217,6 @@ PDIMasterNode::apply_endpoint_delay(uint32_t address,      // NOLINT(build/unsig
   }
 }
 //-----------------------------------------------------------------------------
-
 
 //-----------------------------------------------------------------------------
 const PartitionNode&

@@ -84,6 +84,18 @@ public:
    */
   void sync_timestamp(uint32_t clock_frequency_hz) const override; // NOLINT(build/unsigned)
 
+    /**
+   * @brief      Read the current timestamp word.
+   *
+   * @return     { description_of_the_return_value }
+   */
+  uint64_t read_timestamp() const override; // NOLINT(build/unsigned)
+
+  /**
+   * @brief      Set the timestamp to current time.
+   */
+  void set_timestamp(uint64_t timestamp) const override; // NOLINT(build/unsigned)
+
   /**
    * @brief     Fill the PD-I master monitoring structure.
    */

@@ -396,7 +396,7 @@ def faketriggen(obj, chan, rate, poisson):
     # c) 1-in-n prescaling set by n = rate_div_p
 
     lTopDesign = obj.mTopDesign
-    lTopDesign.enable_fake_trigger(chan,rate,poisson)
+    lTopDesign.enable_periodic_fl_cmd(chan,rate,poisson)
 # ------------------------------------------------------------------------------
 
 
@@ -409,7 +409,7 @@ def faketrigclear(obj, chan):
     Clear the internal trigger generator.
     '''
     lMaster = obj.mMaster
-    lMaster.disable_fake_trigger(chan)
+    lMaster.disable_periodic_fl_cmd(chan)
     secho( "Fake triggers disabled; chan: {}".format(chan), fg='green')
 # ------------------------------------------------------------------------------
 
