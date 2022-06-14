@@ -183,6 +183,7 @@ const std::map<uint64_t, BoardRevision> g_board_uid_revision_map = {
   { 0xd88039d92498, kPC059Rev1 },
   { 0x5410ecbba408, kTLURev1 },
   { 0x5410ecbb9426, kTLURev1 },
+  { 0x5410ecbb941c, kTLURev1 },
   { 0x801f12f5ce48, kFIBRev1 },
   { 0x801f12f5e9ae, kFIBRev1 },
   { 0x49162b65025, kFMCRev3 },
